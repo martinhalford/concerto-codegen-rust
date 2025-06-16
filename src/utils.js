@@ -138,63 +138,17 @@ license = "Apache-2.0"
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde_json = "1.0"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 # Add any test-specific dependencies here
 
-[[example]]
-name = "usage_example"
-path = "examples/usage.rs"
+
 `;
 
   const cargoPath = path.join(outputPath, "Cargo.toml");
   fs.writeFileSync(cargoPath, cargoToml);
   console.log(`Created Cargo.toml at: ${cargoPath}`);
-}
-
-/**
- * Create a sample usage example for the generated Rust code
- * @param {string} outputPath - Path where to create the example
- */
-function createUsageExample(outputPath) {
-  const exampleCode = `// Example usage of generated Concerto models
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
-
-// Import the generated modules
-// Note: Update these imports based on your actual generated modules
-// use crate::org_example_business::*;
-
-fn main() {
-    println!("Example usage of generated Concerto models");
-    
-    // Example: Create and serialize a model instance
-    // let address = Address {
-    //     _class: "org.example.business.Address".to_string(),
-    //     street: "123 Main St".to_string(),
-    //     city: "Anytown".to_string(),
-    //     state: "CA".to_string(),
-    //     zip_code: "12345".to_string(),
-    //     country: "USA".to_string(),
-    // };
-    
-    // Serialize to JSON (requires "json" feature)
-    // #[cfg(feature = "json")]
-    // {
-    //     let json = serde_json::to_string_pretty(&address).unwrap();
-    //     println!("Address as JSON: {}", json);
-    // }
-    
-    println!("Add your model usage code here!");
-}
-`;
-
-  const examplesDir = path.join(outputPath, "examples");
-  ensureDirectoryExists(examplesDir);
-
-  const examplePath = path.join(examplesDir, "usage.rs");
-  fs.writeFileSync(examplePath, exampleCode);
-  console.log(`Created usage example at: ${examplePath}`);
 }
 
 module.exports = {
@@ -203,5 +157,4 @@ module.exports = {
   getFileStats,
   validateCTOFile,
   createCargoToml,
-  createUsageExample,
 };
