@@ -1,6 +1,6 @@
-# Rust Code Generation from Concerto Models
+# Concerto Rust Code Generator
 
-This project demonstrates how to use the Concerto RustVisitor to generate Rust structs and enums from Concerto model files (.cto). It creates a complete, buildable Rust project from your Concerto models.
+A universal code generator that transforms Concerto model definitions (.cto files) into executable Rust projects with business logic boilerplate. Should work with any valid Concerto model.
 
 ## Prerequisites
 
@@ -9,279 +9,215 @@ This project demonstrates how to use the Concerto RustVisitor to generate Rust s
 
 ## Quick Start
 
-### 1. Clone and Navigate to the Project
-
-```bash
-cd rust-codegen-example
-```
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-This will install:
-
-- `@accordproject/concerto-codegen` - Contains the RustVisitor
-- `@accordproject/concerto-core` - Core Concerto functionality
-- `@accordproject/concerto-util` - Utility functions including FileWriter
-
-### 3. Run the Generator
+### 2. Run the Generator
 
 ```bash
 npm run generate
 ```
 
-This will:
+### 3. Build and Run the Generated Project
 
-- Load all `.cto` files from template archives in the `archives/` directory
-- Generate corresponding Rust files in the `output/` directory
-- Create a complete Rust project with `Cargo.toml`, `lib.rs`, and `main.rs`
-- Generate utility functions for DateTime serialization
-
-### 4. Test the Generated Rust Project
+**Prerequisites:** This step requires Rust 1.70+ and Cargo to be installed on your system. For installation instructions, see the [official Rust installation guide](https://rustup.rs/).
 
 ```bash
 cd output
-cargo build
-cargo run
+cargo build    # Compiles the generated Rust code
+cargo run      # Runs demo with synthetic data
+cargo test     # Runs comprehensive test suite
 ```
+
+**What happens:**
+
+- Scans all `.cto` files from template archives in `archives/`
+- Generates complete Rust project with executable business logic boilerplate
+- Creates type-safe request/response handling
+- Provides working demo with synthetic data
+- Includes comprehensive test framework with TODO markers for implementation
 
 ## Generated Output
 
-The generator creates a complete Rust project in the `output/` directory:
+The generator creates a complete, executable Rust project in the `output/` directory:
 
 ```
 output/
 ├── Cargo.toml              # Complete Rust project configuration
-├── README.md               # Documentation for the generated project
+├── README.md               # Generated project documentation
 ├── src/
-│   ├── lib.rs             # Main library file with proper module exports
-│   ├── main.rs            # Example usage with your model namespaces
-│   ├── hello_1_0_0.rs     # Your generated models (e.g., Address, Customer)
-│   ├── concerto*.rs       # Concerto base types
-│   └── utils.rs           # DateTime serialization utilities
-└── examples/
-    └── usage.rs           # Additional usage examples
+│   ├── lib.rs             # Main library with module exports
+│   ├── main.rs            # Executable demo with synthetic data
+│   ├── logic.rs           # Business logic boilerplate with TODO markers
+│   ├── utils.rs           # DateTime and serialization utilities
+│   └── *.rs               # Generated model files (one per namespace)
 ```
 
 ### Key Features
 
-- **Complete Rust Project**: Ready to build and run with `cargo build` and `cargo run`
-- **Proper Module Organization**: User models are re-exported, base Concerto types available via explicit imports
-- **JSON Serialization**: All types implement Serialize/Deserialize with proper field naming
-- **DateTime Support**: Custom serialization for DateTime fields maintaining ISO 8601 compatibility
-- **Optional Fields**: Properly handled with Rust's `Option<T>` type
+- ** Immediately Executable**: Run `cargo run` for instant demo with synthetic data
+- ** Business Logic Boilerplate**: Complete `logic.rs` with function signatures derived from .cto models
+- ** Comprehensive Testing**: Test framework with realistic synthetic data
+- ** Type Safety**: All request/response handling is type-safe
+- ** JSON Compatible**: Full serialize/deserialize with proper field naming
+- ** DateTime Support**: ISO 8601 compatible DateTime serialization
+- ** TODO Markers**: Clear guidance on where to implement business logic
 
 ## Project Structure
 
 ```
-rust-codegen-example/
+concerto-codegen-rust/
 ├── src/
-│   ├── index.js          # Main entry point with user-friendly interface
-│   ├── generate.js       # Core code generation logic
-│   └── utils.js          # Utility functions
-├── archives/
-│   └── latedeliveryandpenalty-typescript/   # Example template archive
+│   ├── generate.js       # Core generation engine
+│   └── utils.js          # Project utilities
+├── archives/             # Template archives (Accord Project format)
+│   └── latedeliveryandpenalty/
 │       ├── model/
-│       │   ├── model.cto                   # Main template model
-│       │   ├── @models.accordproject.org.accordproject.contract@0.2.0.cto
-│       │   ├── @models.accordproject.org.accordproject.runtime@0.2.0.cto
-│       │   └── @models.accordproject.org.time@0.3.0.cto
-│       ├── logic/                          # Template logic (Ergo files)
-│       ├── text/                           # Template text (grammar files)
-│       └── package.json                    # Template archive metadata
-├── output/               # Generated Rust project (created when you run the generator)
-├── package.json          # Node.js project configuration
-├── README.md            # This file
-└── .gitignore           # Git ignore file
+│       │   ├── model.cto                 # Main template model
+│       │   └── *.cto                     # Accord Project base models
+│       ├── logic/                        # Template logic (reference only)
+│       ├── text/                         # Template grammar (reference only)
+│       └── package.json                  # Template metadata
+├── data/                 # Sample JSON files (for reference)
+├── output/               # Generated Rust project ⚡
+├── package.json          # Node.js configuration
+└── README.md            # This file
 ```
 
-## Adding Your Own Template Archives
+## Adding Your Own Models
 
-1. Create template archives in the `archives/` directory following the Accord Project structure:
-   ```
-   archives/your-template-name/
-   ├── model/
-   │   ├── model.cto        # Your main template model
-   │   └── *.cto           # Any additional model dependencies
-   ├── logic/              # Ergo logic files (optional)
-   ├── text/               # Grammar files (optional)
-   └── package.json        # Template metadata
-   ```
-2. Run `npm run generate` again
-3. The generator will process all `.cto` files from all template archives and generate corresponding Rust code
-4. Build and test: `cd output && cargo build && cargo run`
+### Option 1: Template Archives (Accord Project format)
 
-## Understanding the Generated Code
+```
+archives/your-domain/
+├── model/
+│   ├── model.cto        # Your main model definitions
+│   └── *.cto           # Additional dependencies
+├── logic/              # Reference logic (optional)
+├── text/               # Reference grammar (optional)
+└── package.json        # Metadata
+```
 
-The RustVisitor generates:
+### Option 2: Any .cto Files
 
-### Structs from Concerto Classes
+Place any valid Concerto `.cto` files in the `model/` subdirectory of a template archive.
+
+**The generator works with any valid Concerto model:**
+
+- Supply chain models
+- Insurance contracts
+- Financial instruments
+- IoT device schemas
+- Any domain-specific models
+
+Run `npm run generate` and get a complete Rust implementation!
+
+## What Gets Generated
+
+### Type-Safe Model Structures
 
 ```rust
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Address {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct YourRequestType {
     #[serde(rename = "$class")]
     pub _class: String,
 
-    #[serde(rename = "line1")]
-    pub line1: String,
+    pub field_name: String,
 
-    #[serde(rename = "city")]
-    pub city: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optional_field: Option<DateTime<Utc>>,
 
-    // ... other fields
+    #[serde(rename = "$timestamp")]
+    pub _timestamp: DateTime<Utc>,
 }
 ```
 
-### Optional Fields
+### Executable Business Logic Boilerplate
 
 ```rust
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Customer {
-    #[serde(rename = "$class")]
-    pub _class: String,
+pub struct ContractLogic;
 
-    #[serde(
-        rename = "address",
-        skip_serializing_if = "Option::is_none",
-    )]
-    pub address: Option<Address>,
+impl ContractLogic {
+    pub async fn trigger(
+        &self,
+        template_data: &YourTemplateType,
+        request: &YourRequestType,
+    ) -> Result<ContractResponse, Box<dyn std::error::Error>> {
+
+        // TODO: Implement your business logic here
+
+        let response = YourResponseType {
+            _class: "your.namespace.YourResponseType".to_string(),
+            result_field: 0.0, // TODO: Calculate based on business logic
+            _timestamp: Utc::now(),
+        };
+
+        Ok(ContractResponse { result: response })
+    }
 }
 ```
 
-### Enums from Concerto Enumerations
+### Comprehensive Test Framework
 
 ```rust
-pub enum BusinessType {
-    #[allow(non_camel_case_types)]
-    SOLE_PROPRIETORSHIP,
-    #[allow(non_camel_case_types)]
-    PARTNERSHIP,
-    // ... other variants
+#[tokio::test]
+async fn test_logic_trigger() {
+    let logic = ContractLogic::new();
+
+    // Synthetic test data generated from your models
+    let template_data = YourTemplateType { /* ... */ };
+    let request = YourRequestType { /* ... */ };
+
+    let result = logic.trigger(&template_data, &request).await;
+    assert!(result.is_ok());
+
+    // TODO: Add your specific business logic assertions
 }
 ```
 
-### Special DateTime Handling
+## Development Workflow
 
-DateTime fields get special serialization attributes:
-
-```rust
-#[serde(
-    rename = "timestamp",
-    serialize_with = "serialize_datetime",
-    deserialize_with = "deserialize_datetime",
-)]
-pub timestamp: DateTime<Utc>,
-```
-
-## Using the Generated Code
-
-### In the Generated Project
-
-The generated project includes a `main.rs` with examples:
+### 1. Generate and Test
 
 ```bash
+npm run generate    # Generate Rust project from your .cto files
 cd output
-cargo run
+cargo run          # See your models in action with synthetic data
+cargo test         # Run comprehensive test suite
 ```
 
-### In Your Own Rust Project
+### 2. Implement Business Logic
 
-1. Copy the generated files to your Rust project's `src/` directory
-2. Add dependencies to your `Cargo.toml`:
+1. Open `src/logic.rs`
+2. Find the `trigger()` method
+3. Replace TODO markers with your business logic
+4. Run `cargo test` to verify implementation
+
+### 3. Use in Production
+
+Copy the generated project or integrate into your existing Rust codebase:
 
 ```toml
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde_json = "1.0"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 ```
 
-3. Import and use the generated types:
+## Key Benefits
 
-```rust
-use concerto_models::*;
+- **🚀 Zero Setup Time**: Immediately executable output
+- **🔒 Type Safety**: Compile-time guarantees for all model operations
+- **🧪 Test-Driven**: Comprehensive test framework included
+- **📊 Production Ready**: Async-compatible business logic structure
+- **🌍 Universal**: Works with any valid Concerto model from any domain
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let address = Address {
-        _class: "hello@1.0.0.Address".to_string(),
-        line1: "123 Main St".to_string(),
-        city: "Anytown".to_string(),
-        state: "CA".to_string(),
-        country: "USA".to_string(),
-    };
+---
 
-    let customer = Customer {
-        _class: "hello@1.0.0.Customer".to_string(),
-        address: Some(address),
-    };
+**Ready to transform your Concerto models into production-ready Rust code?**
 
-    // Serialize to JSON
-    let json = serde_json::to_string_pretty(&customer)?;
-    println!("{}", json);
-
-    Ok(())
-}
-```
-
-## Development with Local Concerto-Codegen
-
-To use a local version of concerto-codegen during development:
-
-1. Update `package.json`:
-
-```json
-"@accordproject/concerto-codegen": "file:/path/to/your/local/concerto-codegen"
-```
-
-2. Reinstall dependencies:
-
-```bash
-npm install
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Module not found" errors**
-
-   - Make sure you've run `npm install`
-   - Check that the dependencies are correctly installed
-
-2. **"No .cto files found"**
-
-   - Ensure your template archives are in the `archives/` directory
-   - Check that each archive has a `model/` subdirectory containing `.cto` files
-   - Verify that `.cto` files have the correct extension
-
-3. **Generated Rust code doesn't compile**
-
-   - Make sure you have the required dependencies in your Rust project's `Cargo.toml`
-   - Check that you're importing the generated modules correctly
-
-4. **Namespace resolution errors**
-   - Ensure all imported types are available locally or via URL
-   - Check that dependencies are loaded in the correct order
-
-### Getting Help
-
-- Check the console output for detailed error messages
-- Review the example model file to understand proper Concerto syntax
-- Ensure your model files are syntactically correct
-
-## Customization
-
-You can customize the code generation by:
-
-- Modifying the `src/generate.js` script
-- Adding custom template archives to the `archives/` directory
-- Adjusting the output directory in the generator script
-- Customizing the generated `Cargo.toml` in `src/utils.js`
-
-## License
-
-Apache-2.0
+`npm run generate` and start building! 🚀
