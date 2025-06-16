@@ -1,0 +1,27 @@
+{
+  "name": "rust-codegen",
+  "version": "1.0.0",
+  "description": "Uses Concerto Codegen RustVisitor to generate Rust code from Concerto models",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "generate": "node src/generate.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "concerto",
+    "rust",
+    "codegen",
+    "blockchain"
+  ],
+  "author": "Martin Halford",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@accordproject/concerto-codegen": "file:/Users/martinhalford/Development/halfordit/concerto-codegen",
+    "@accordproject/concerto-core": "^3.16.0",
+    "@accordproject/concerto-util": "^3.16.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.29.0"
+  }
+}
