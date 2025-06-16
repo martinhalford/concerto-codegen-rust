@@ -11,6 +11,9 @@ output/
 /output
 *.generated.*
 
+# Template archives (uncomment if you want to ignore them)
+# archives/
+
 # Runtime data
 pids
 *.pid

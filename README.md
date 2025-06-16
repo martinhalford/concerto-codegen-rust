@@ -35,7 +35,7 @@ npm run generate
 
 This will:
 
-- Load all `.cto` files from the `models/` directory
+- Load all `.cto` files from template archives in the `archives/` directory
 - Generate corresponding Rust files in the `output/` directory
 - Create a complete Rust project with `Cargo.toml`, `lib.rs`, and `main.rs`
 - Generate utility functions for DateTime serialization
@@ -82,19 +82,36 @@ rust-codegen-example/
 │   ├── index.js          # Main entry point with user-friendly interface
 │   ├── generate.js       # Core code generation logic
 │   └── utils.js          # Utility functions
-├── models/
-│   └── example.cto       # Example Concerto model (you can add more)
+├── archives/
+│   └── latedeliveryandpenalty-typescript/   # Example template archive
+│       ├── model/
+│       │   ├── model.cto                   # Main template model
+│       │   ├── @models.accordproject.org.accordproject.contract@0.2.0.cto
+│       │   ├── @models.accordproject.org.accordproject.runtime@0.2.0.cto
+│       │   └── @models.accordproject.org.time@0.3.0.cto
+│       ├── logic/                          # Template logic (Ergo files)
+│       ├── text/                           # Template text (grammar files)
+│       └── package.json                    # Template archive metadata
 ├── output/               # Generated Rust project (created when you run the generator)
 ├── package.json          # Node.js project configuration
 ├── README.md            # This file
 └── .gitignore           # Git ignore file
 ```
 
-## Adding Your Own Models
+## Adding Your Own Template Archives
 
-1. Create or copy your `.cto` files into the `models/` directory
+1. Create template archives in the `archives/` directory following the Accord Project structure:
+   ```
+   archives/your-template-name/
+   ├── model/
+   │   ├── model.cto        # Your main template model
+   │   └── *.cto           # Any additional model dependencies
+   ├── logic/              # Ergo logic files (optional)
+   ├── text/               # Grammar files (optional)
+   └── package.json        # Template metadata
+   ```
 2. Run `npm run generate` again
-3. The generator will process all `.cto` files and generate corresponding Rust code
+3. The generator will process all `.cto` files from all template archives and generate corresponding Rust code
 4. Build and test: `cd output && cargo build && cargo run`
 
 ## Understanding the Generated Code
@@ -237,8 +254,9 @@ npm install
 
 2. **"No .cto files found"**
 
-   - Ensure your model files are in the `models/` directory
-   - Check that files have the `.cto` extension
+   - Ensure your template archives are in the `archives/` directory
+   - Check that each archive has a `model/` subdirectory containing `.cto` files
+   - Verify that `.cto` files have the correct extension
 
 3. **Generated Rust code doesn't compile**
 
@@ -260,7 +278,7 @@ npm install
 You can customize the code generation by:
 
 - Modifying the `src/generate.js` script
-- Adding custom model files to the `models/` directory
+- Adding custom template archives to the `archives/` directory
 - Adjusting the output directory in the generator script
 - Customizing the generated `Cargo.toml` in `src/utils.js`
 

@@ -15,32 +15,63 @@ const {
 } = require("./utils");
 
 /**
- * Load all .cto files from a directory
- * @param {string} modelsDir - Directory containing .cto files
- * @returns {Array<{filename: string, content: string}>} Array of model files
+ * Load all .cto files from template archives in the archives directory
+ * @param {string} archivesDir - Directory containing template archives
+ * @returns {Array<{filename: string, content: string, archiveName: string}>} Array of model files
  */
-function loadModelFiles(modelsDir) {
+function loadModelFiles(archivesDir) {
   const modelFiles = [];
 
-  if (!fs.existsSync(modelsDir)) {
+  if (!fs.existsSync(archivesDir)) {
     console.log(
-      `Models directory '${modelsDir}' does not exist. Creating it...`
+      `Archives directory '${archivesDir}' does not exist. Creating it...`
     );
-    fs.mkdirSync(modelsDir, { recursive: true });
+    fs.mkdirSync(archivesDir, { recursive: true });
     return modelFiles;
   }
 
-  const files = fs.readdirSync(modelsDir);
+  // Get all subdirectories in archives (each is a template archive)
+  const archiveEntries = fs.readdirSync(archivesDir, { withFileTypes: true });
+  const archiveDirectories = archiveEntries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
 
-  for (const file of files) {
-    if (file.endsWith(".cto")) {
-      const filePath = path.join(modelsDir, file);
-      const content = fs.readFileSync(filePath, "utf8");
-      modelFiles.push({
-        filename: file,
-        content: content,
-      });
-      console.log(`Loaded model file: ${file}`);
+  if (archiveDirectories.length === 0) {
+    console.log("No template archives found in the archives directory.");
+    console.log(
+      "Please add template archives to the archives/ directory and try again."
+    );
+    return modelFiles;
+  }
+
+  // Process each template archive
+  for (const archiveName of archiveDirectories) {
+    const archivePath = path.join(archivesDir, archiveName);
+    const modelDir = path.join(archivePath, "model");
+
+    if (!fs.existsSync(modelDir)) {
+      console.log(
+        `Warning: No model directory found in archive '${archiveName}', skipping...`
+      );
+      continue;
+    }
+
+    console.log(`Processing template archive: ${archiveName}`);
+
+    // Load all .cto files from the model directory of this archive
+    const files = fs.readdirSync(modelDir);
+
+    for (const file of files) {
+      if (file.endsWith(".cto")) {
+        const filePath = path.join(modelDir, file);
+        const content = fs.readFileSync(filePath, "utf8");
+        modelFiles.push({
+          filename: file,
+          content: content,
+          archiveName: archiveName,
+        });
+        console.log(`  Loaded model file: ${file} from ${archiveName}`);
+      }
     }
   }
 
@@ -49,10 +80,10 @@ function loadModelFiles(modelsDir) {
 
 /**
  * Generate Rust code from Concerto models
- * @param {string} modelsDir - Directory containing .cto files
+ * @param {string} archivesDir - Directory containing template archives with .cto files
  * @param {string} outputDir - Directory to write generated Rust files
  */
-async function generateRustCode(modelsDir, outputDir) {
+async function generateRustCode(archivesDir, outputDir) {
   try {
     console.log("Starting Rust code generation...");
 
@@ -62,13 +93,13 @@ async function generateRustCode(modelsDir, outputDir) {
     ensureDirectoryExists(rustSrcDir);
     console.log(`Created Rust project structure in: ${outputDir}`);
 
-    // Load model files
-    const modelFiles = loadModelFiles(modelsDir);
+    // Load model files from template archives
+    const modelFiles = loadModelFiles(archivesDir);
 
     if (modelFiles.length === 0) {
-      console.log("No .cto files found in the models directory.");
+      console.log("No .cto files found in the template archives.");
       console.log(
-        "Please add some Concerto model files to the models/ directory and try again."
+        "Please add template archives with model files to the archives/ directory and try again."
       );
       return;
     }
@@ -249,7 +280,7 @@ use serde_json;
 use concerto_models::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🦀 Concerto Models Example");
+    println!("Concerto Models Example");
     println!("========================\\n");
     
     // TODO: Add specific examples based on your models
@@ -258,7 +289,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Available namespaces:");
 ${namespaces.map((ns) => `    println!("  - ${ns}");`).join("\n")}
     
-    println!("\\n✅ All examples completed successfully!");
+    println!("\\nAll examples completed successfully!");
     
     Ok(())
 }
@@ -289,8 +320,9 @@ This is an automatically generated Rust project containing structs and enums der
 
 ## Generated From
 
-This project was generated from the following Concerto model files:
-- See the \`models/\` directory in the parent project for the source .cto files
+This project was generated from Accord Project Template Archives:
+- See the \`archives/\` directory in the parent project for the source template archives
+- Each archive contains \`.cto\` files in its \`model/\` subdirectory
 
 ## Dependencies
 
@@ -364,13 +396,13 @@ DateTime fields use \`chrono::DateTime<Utc>\` and have custom serialization to m
 
 // Main execution
 async function main() {
-  const modelsDir = path.join(__dirname, "..", "models");
+  const archivesDir = path.join(__dirname, "..", "archives");
   const outputDir = path.join(__dirname, "..", "output");
 
-  console.log(`Models directory: ${path.resolve(modelsDir)}`);
+  console.log(`Archives directory: ${path.resolve(archivesDir)}`);
   console.log(`Output directory: ${path.resolve(outputDir)}`);
 
-  await generateRustCode(modelsDir, outputDir);
+  await generateRustCode(archivesDir, outputDir);
 }
 
 // Run if called directly

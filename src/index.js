@@ -12,17 +12,17 @@ async function main() {
   console.log("Concerto to Rust Code Generator");
   console.log("================================\n");
 
-  const modelsDir = path.join(__dirname, "..", "models");
+  const archivesDir = path.join(__dirname, "..", "archives");
   const outputDir = path.join(__dirname, "..", "output");
 
   console.log(
-    "This tool generates Rust structs and enums from Concerto model files (.cto)"
+    "This tool generates Rust structs and enums from Concerto model files (.cto) in template archives"
   );
-  console.log(`Models directory: ${path.resolve(modelsDir)}`);
+  console.log(`Archives directory: ${path.resolve(archivesDir)}`);
   console.log(`Output directory: ${path.resolve(outputDir)}\n`);
 
   try {
-    await generateRustCode(modelsDir, outputDir);
+    await generateRustCode(archivesDir, outputDir);
 
     console.log("\n Code generation completed successfully!");
     console.log("\nNext steps:");
