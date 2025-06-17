@@ -35,10 +35,10 @@ cargo test     # Runs comprehensive test suite
 **What happens:**
 
 - Scans all `.cto` files from template archives in `archives/`
-- Generates complete Rust project with executable business logic boilerplate
+- Generates Rust project with executable business logic boilerplate
 - Creates type-safe request/response handling
 - Provides working demo with synthetic data
-- Includes comprehensive test framework with TODO markers for implementation
+- Includes test framework with TODO markers for implementation
 
 ## Generated Output
 
@@ -60,7 +60,7 @@ output/
 
 - ** Immediately Executable**: Run `cargo run` for instant demo with synthetic data
 - ** Business Logic Boilerplate**: Complete `logic.rs` with function signatures derived from .cto models
-- ** Comprehensive Testing**: Test framework with realistic synthetic data
+- ** Testing**: Test framework with realistic synthetic data
 - ** Type Safety**: All request/response handling is type-safe
 - ** JSON Compatible**: Full serialize/deserialize with proper field naming
 - ** DateTime Support**: ISO 8601 compatible DateTime serialization
@@ -71,9 +71,10 @@ output/
 ```
 concerto-codegen-rust/
 ├── src/
-│   ├── generate.js       # Core generation engine
-│   └── utils.js          # Project utilities
-├── archives/             # Template archives (Accord Project format)
+│   ├── generate.js                       # Core generation engine
+│   └── utils.js                          # Project utilities
+├── archives/
+# Template archives (Accord Project format)
 │   └── latedeliveryandpenalty/
 │       ├── model/
 │       │   ├── model.cto                 # Main template model
@@ -81,39 +82,26 @@ concerto-codegen-rust/
 │       ├── logic/                        # Template logic (reference only)
 │       ├── text/                         # Template grammar (reference only)
 │       └── package.json                  # Template metadata
-├── data/                 # Sample JSON files (for reference)
-├── output/               # Generated Rust project ⚡
-├── package.json          # Node.js configuration
-└── README.md            # This file
+├── output/                               # Generated Rust project ⚡
+├── package.json                          # Node.js configuration
+└── README.md                             # This file
 ```
 
 ## Adding Your Own Models
 
-### Option 1: Template Archives (Accord Project format)
+Place any valid, uncompressed template archive into the `archives/` subdirectory.
 
 ```
 archives/your-domain/
 ├── model/
-│   ├── model.cto        # Your main model definitions
+│   ├── model.cto       # Your main model definitions
 │   └── *.cto           # Additional dependencies
 ├── logic/              # Reference logic (optional)
 ├── text/               # Reference grammar (optional)
 └── package.json        # Metadata
 ```
 
-### Option 2: Any .cto Files
-
-Place any valid Concerto `.cto` files in the `model/` subdirectory of a template archive.
-
-**The generator works with any valid Concerto model:**
-
-- Supply chain models
-- Insurance contracts
-- Financial instruments
-- IoT device schemas
-- Any domain-specific models
-
-Run `npm run generate` and get a complete Rust implementation!
+Run `npm run generate` and get an executable Rust implementation, ready for further coding.
 
 ## What Gets Generated
 
@@ -183,7 +171,7 @@ async fn test_logic_trigger() {
 ### 1. Generate and Test
 
 ```bash
-npm run generate    # Generate Rust project from your .cto files
+npm run generate   # Generate Rust project from your .cto files
 cd output
 cargo run          # See your models in action with synthetic data
 cargo test         # Run comprehensive test suite
