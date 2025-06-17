@@ -222,6 +222,171 @@ function toRustType(concertoType, isOptional = false) {
 }
 
 /**
+ * Generate template data creation code with proper type handling
+ * @param {Object} templateModelType - The template model type info
+ * @param {string} prefix - Prefix for identifiers (test/demo)
+ * @returns {string} Generated template data creation code
+ */
+function generateTemplateDataCreation(templateModelType, prefix = "demo") {
+  const properties = templateModelType.properties
+    .filter(
+      (prop) =>
+        prop.name !== "$class" &&
+        prop.name !== "$timestamp" &&
+        prop.name !== "clauseId" &&
+        prop.name !== "$identifier"
+    )
+    .map((prop) => {
+      const rustName = prop.rustName === "_class" ? "_class" : prop.rustName;
+      let testValue;
+
+      switch (prop.type) {
+        case "Boolean":
+          testValue = "false";
+          break;
+        case "Double":
+        case "Long":
+          testValue = prop.name.includes("multiple") ? "1.0" : "100.0";
+          break;
+        case "Integer":
+          testValue = "100";
+          break;
+        case "String":
+          testValue = `"Sample ${prop.name}".to_string()`;
+          break;
+        case "MonetaryAmount":
+          testValue = `org_accordproject_money_0_3_0::MonetaryAmount {
+                _class: "org.accordproject.money@0.3.0.MonetaryAmount".to_string(),
+                double_value: 1000.0,
+                currency_code: org_accordproject_money_0_3_0::CurrencyCode::USD,
+            }`;
+          break;
+        case "Period":
+          testValue = `org_accordproject_time_0_3_0::Period {
+                _class: "org.accordproject.time@0.3.0.Period".to_string(),
+                amount: 30,
+                unit: org_accordproject_time_0_3_0::PeriodUnit::days,
+            }`;
+          break;
+        case "Duration":
+          testValue = `org_accordproject_time_0_3_0::Duration {
+                _class: "org.accordproject.time@0.3.0.Duration".to_string(),
+                amount: 1,
+                unit: org_accordproject_time_0_3_0::TemporalUnit::days,
+            }`;
+          break;
+        case "TemporalUnit":
+          testValue = "org_accordproject_time_0_3_0::TemporalUnit::days";
+          break;
+        case "PeriodUnit":
+          testValue = "org_accordproject_time_0_3_0::PeriodUnit::days";
+          break;
+        // Handle custom types that might be complex structs
+        default:
+          if (prop.type.includes("Party")) {
+            testValue = `${prop.type} {
+                _class: "${templateModelType.namespace}.${
+              prop.type
+            }".to_string(),
+                address: "${prefix} ${prop.type} Address".to_string(),
+                party_id: "${prefix}_${prop.type.toLowerCase()}_001".to_string(),
+                _identifier: "${prop.type.toLowerCase()}".to_string(),
+            }`;
+          } else if (prop.isOptional) {
+            testValue = "None";
+          } else {
+            testValue = "Default::default()";
+          }
+          break;
+      }
+
+      return `            ${rustName}: ${testValue}`;
+    })
+    .join(",\n");
+
+  return `        let template_data = ${templateModelType.name} {
+            _class: "${templateModelType.fullyQualifiedName}".to_string(),
+            clause_id: "${prefix}-clause".to_string(),
+            _identifier: "${prefix}-template".to_string(),
+${properties}
+        };`;
+}
+
+/**
+ * Generate request data creation code with proper type handling
+ * @param {Object} requestType - The request type info
+ * @param {string} prefix - Prefix for identifiers (test/demo)
+ * @returns {string} Generated request data creation code
+ */
+function generateRequestDataCreation(requestType, prefix = "demo") {
+  const properties = requestType.properties
+    .filter((prop) => prop.name !== "$class" && prop.name !== "$timestamp")
+    .map((prop) => {
+      const rustName = prop.rustName === "_class" ? "_class" : prop.rustName;
+      let testValue;
+
+      switch (prop.type) {
+        case "Boolean":
+          testValue = "false";
+          break;
+        case "Double":
+        case "Long":
+          testValue = "100.0";
+          break;
+        case "Integer":
+          testValue = "100";
+          break;
+        case "String":
+          testValue = `"${prefix} ${prop.name}".to_string()`;
+          break;
+        case "DateTime":
+          if (prop.isOptional) {
+            testValue = "Some(Utc::now())";
+          } else {
+            testValue = "Utc::now()";
+          }
+          break;
+        case "MonetaryAmount":
+          testValue = `org_accordproject_money_0_3_0::MonetaryAmount {
+                _class: "org.accordproject.money@0.3.0.MonetaryAmount".to_string(),
+                double_value: 150.0,
+                currency_code: org_accordproject_money_0_3_0::CurrencyCode::USD,
+            }`;
+          break;
+        // Handle arrays of complex types
+        default:
+          if (prop.isArray && prop.type === "Penalty") {
+            testValue = `vec![
+                Penalty {
+                    _class: "${requestType.namespace}.Penalty".to_string(),
+                    description: "Sample penalty".to_string(),
+                    amount: org_accordproject_money_0_3_0::MonetaryAmount {
+                        _class: "org.accordproject.money@0.3.0.MonetaryAmount".to_string(),
+                        double_value: 150.0,
+                        currency_code: org_accordproject_money_0_3_0::CurrencyCode::USD,
+                    },
+                }
+            ]`;
+          } else if (prop.isOptional) {
+            testValue = "None";
+          } else {
+            testValue = "Default::default()";
+          }
+          break;
+      }
+
+      return `            ${rustName}: ${testValue}`;
+    })
+    .join(",\n");
+
+  return `        let request = ${requestType.name} {
+            _class: "${requestType.fullyQualifiedName}".to_string(),
+${properties},
+            _timestamp: Utc::now(),
+        };`;
+}
+
+/**
  * Generate boilerplate logic.rs file based on Concerto model definitions
  * @param {Object} contractTypes - Contract types extracted from models
  * @param {string} archiveName - Name of the template archive
@@ -272,6 +437,20 @@ function generateBoilerplateFromModels(contractTypes, archiveName) {
           defaultValue =
             '"".to_string(), // TODO: Calculate based on business logic';
           break;
+        case "MonetaryAmount":
+          defaultValue = `org_accordproject_money_0_3_0::MonetaryAmount {
+                _class: "org.accordproject.money@0.3.0.MonetaryAmount".to_string(),
+                double_value: 0.0,
+                currency_code: org_accordproject_money_0_3_0::CurrencyCode::USD,
+            }`;
+          break;
+        case "Period":
+          defaultValue = `org_accordproject_time_0_3_0::Period {
+                _class: "org.accordproject.time@0.3.0.Period".to_string(),
+                amount: 30,
+                unit: org_accordproject_time_0_3_0::PeriodUnit::days,
+            }`;
+          break;
         default:
           defaultValue =
             "Default::default(), // TODO: Calculate based on business logic";
@@ -312,7 +491,19 @@ function generateBoilerplateFromModels(contractTypes, archiveName) {
           }
           break;
         default:
-          if (prop.isOptional) {
+          if (prop.type === "MonetaryAmount") {
+            testValue = `org_accordproject_money_0_3_0::MonetaryAmount {
+                _class: "org.accordproject.money@0.3.0.MonetaryAmount".to_string(),
+                double_value: 150.0,
+                currency_code: org_accordproject_money_0_3_0::CurrencyCode::USD,
+            }`;
+          } else if (prop.type === "Period") {
+            testValue = `org_accordproject_time_0_3_0::Period {
+                _class: "org.accordproject.time@0.3.0.Period".to_string(),
+                amount: 30,
+                unit: org_accordproject_time_0_3_0::PeriodUnit::days,
+            }`;
+          } else if (prop.isOptional) {
             testValue = "None";
           } else {
             testValue = "Default::default()";
@@ -363,7 +554,7 @@ impl ContractLogic {
     pub async fn trigger(
         &self,
         template_data: &${
-          templateModelType ? templateModelType.name : "TemplateModel"
+          templateModelType ? templateModelType.name : "serde_json::Value"
         },
         request: &${requestType.name},
     ) -> Result<ContractResponse, Box<dyn std::error::Error>> {
@@ -403,7 +594,7 @@ ${
         // Create the response based on your business logic
         let response = ${responseType.name} {
             _class: "${responseType.fullyQualifiedName}".to_string(),
-${responseFields}
+${responseFields},
             _timestamp: Utc::now(),
         };
 
@@ -428,69 +619,13 @@ mod tests {
         // Create test template data
         ${
           templateModelType
-            ? `        let template_data = ${templateModelType.name} {
-            _class: "${templateModelType.fullyQualifiedName}".to_string(),
-            clause_id: "test-clause".to_string(),
-            _identifier: "test-template".to_string(),
-${templateModelType.properties
-  .filter(
-    (prop) =>
-      prop.name !== "$class" &&
-      prop.name !== "$timestamp" &&
-      prop.name !== "clauseId" &&
-      prop.name !== "$identifier"
-  )
-  .map((prop) => {
-    const rustName = prop.rustName === "_class" ? "_class" : prop.rustName;
-
-    let testValue;
-    switch (prop.type) {
-      case "Boolean":
-        testValue = "false";
-        break;
-      case "Double":
-      case "Long":
-        testValue = "10.0";
-        break;
-      case "Integer":
-        testValue = "100";
-        break;
-      case "String":
-        testValue = '"Sample Value".to_string()';
-        break;
-      case "Duration":
-        testValue = `Duration {
-                 _class: "org.accordproject.time@0.3.0.Duration".to_string(),
-                 amount: 1,
-                 unit: TemporalUnit::days,
-             }`;
-        break;
-      case "TemporalUnit":
-        testValue = "TemporalUnit::days";
-        break;
-      default:
-        if (prop.isOptional) {
-          testValue = "None";
-        } else {
-          testValue = "Default::default()";
-        }
-        break;
-    }
-
-    return `            ${rustName}: ${testValue},`;
-  })
-  .join("\n")}
-        };`
+            ? generateTemplateDataCreation(templateModelType, "test")
             : `// TODO: Create template data
-        let template_data = TemplateModel::default();`
+        let template_data = serde_json::json!({"_class": "unknown"});`
         }
 
         // Create test request data
-        let request = ${requestType.name} {
-            _class: "${requestType.fullyQualifiedName}".to_string(),
-${testRequestFields},
-            _timestamp: Utc::now(),
-        };
+        ${generateRequestDataCreation(requestType, "test")}
 
         // Execute the business logic
         let result = logic.trigger(&template_data, &request).await;
@@ -504,6 +639,103 @@ ${testRequestFields},
         }
     }
 }`;
+}
+
+/**
+ * Sort model files by dependencies to ensure proper loading order
+ * @param {Array} modelFiles - Array of model file objects
+ * @returns {Array} Sorted array of model files
+ */
+function sortModelFilesByDependencies(modelFiles) {
+  // Extract namespace and import information from each file
+  const fileInfo = modelFiles.map((file) => {
+    const content = file.content;
+
+    // Extract namespace
+    const namespaceMatch = content.match(/namespace\s+([\w.@]+)/);
+    const namespace = namespaceMatch ? namespaceMatch[1] : null;
+
+    // Extract imports
+    const importMatches =
+      content.match(/import\s+[\w.@]+(\{[^}]+\})?\s+from\s+([^\s]+)/g) || [];
+    const imports = importMatches
+      .map((imp) => {
+        const fromMatch = imp.match(/from\s+([^\s]+)/);
+        return fromMatch ? fromMatch[1].replace(/['"]/g, "") : null;
+      })
+      .filter(Boolean);
+
+    // Also look for direct type references to common namespaces
+    const commonNamespaces = [
+      "org.accordproject.runtime",
+      "org.accordproject.contract",
+      "org.accordproject.time",
+      "org.accordproject.money",
+      "org.accordproject.party",
+    ];
+
+    const referencedNamespaces = commonNamespaces.filter(
+      (ns) => content.includes(ns + ".") && namespace !== ns
+    );
+
+    return {
+      ...file,
+      namespace,
+      imports: [...imports, ...referencedNamespaces],
+      hasImports: imports.length > 0 || referencedNamespaces.length > 0,
+    };
+  });
+
+  // Priority-based sorting for proper dependency order
+  const sortedFiles = [...fileInfo].sort((a, b) => {
+    // Helper function to get priority based on file type and dependencies
+    const getPriority = (file) => {
+      // Base types (no version suffix) get higher priority than versioned ones
+      const isBaseType = !file.filename.includes("@");
+
+      if (file.filename.includes("contract")) {
+        return isBaseType ? 10 : 15; // contract base types first, then versioned
+      }
+      if (file.filename.includes("runtime")) {
+        return isBaseType ? 20 : 25; // runtime base types first, then versioned
+      }
+      if (file.filename.includes("time")) {
+        return isBaseType ? 30 : 35;
+      }
+      if (file.filename.includes("money")) {
+        return isBaseType ? 40 : 45;
+      }
+      if (file.filename.includes("party")) {
+        return isBaseType ? 50 : 55;
+      }
+      if (file.filename.includes("obligation")) {
+        return 70; // obligation depends on many others
+      }
+      if (file.filename === "model.cto") {
+        return 100; // user models last
+      }
+      return 60; // other files
+    };
+
+    const aPriority = getPriority(a);
+    const bPriority = getPriority(b);
+
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+
+    // Within same priority, sort by import count
+    return a.imports.length - b.imports.length;
+  });
+
+  console.log("Model loading order:");
+  sortedFiles.forEach((file, index) => {
+    console.log(
+      `  ${index + 1}. ${file.filename} (imports: ${file.imports.length})`
+    );
+  });
+
+  return sortedFiles;
 }
 
 /**
@@ -536,18 +768,7 @@ async function generateRustCode(archivesDir, outputDir) {
     const modelManager = new ModelManager();
 
     // Sort models to ensure dependencies are loaded first
-    // Models without imports (like money.cto) should be loaded before models that import them
-    const sortedModelFiles = modelFiles.sort((a, b) => {
-      const aHasImports = a.content.includes("import ");
-      const bHasImports = b.content.includes("import ");
-
-      // Models without imports come first
-      if (!aHasImports && bHasImports) return -1;
-      if (aHasImports && !bHasImports) return 1;
-
-      // Otherwise maintain original order
-      return 0;
-    });
+    const sortedModelFiles = sortModelFilesByDependencies(modelFiles);
 
     for (const modelFile of sortedModelFiles) {
       try {
@@ -857,9 +1078,9 @@ function createMainRs(srcDir, modelManager, contractTypes = null) {
 //! The generated code is immediately executable and shows the complete workflow.
 
 use chrono::{TimeZone, Utc};
-use serde_json;
 use concerto_models::*;
-use logic::{ContractLogic};
+use logic::ContractLogic;
+use serde_json;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -881,21 +1102,22 @@ ${namespaces.map((ns) => `    println!("  - ${ns}");`).join("\n")}
     // Create synthetic template data
     ${
       templateModelType
-        ? `let template_data = ${templateModelType.name} {
-        _class: "${templateModelType.fullyQualifiedName}".to_string(),
-        clause_id: "demo-clause-001".to_string(),
-        _identifier: "demo-template".to_string(),
-${templateFields}
-    };`
-        : `let template_data = TemplateModel::default();`
+        ? generateTemplateDataCreation(templateModelType, "demo")
+        : `let template_data = serde_json::json!({"_class": "unknown"});`
     }
     
     // Create synthetic request data  
-    let request = ${requestType.name} {
-        _class: "${requestType.fullyQualifiedName}".to_string(),
-${requestFields},
-        _timestamp: Utc::now(),
-    };
+    ${generateRequestDataCreation(requestType, "demo")}
+    
+    // Show the request JSON first
+    println!("\\nRequest Generated:");
+    match serde_json::to_string_pretty(&request) {
+        Ok(json) => {
+            println!("\\nRequest JSON:");
+            println!("{}", json);
+        }
+        Err(e) => println!("Failed to serialize request: {}", e),
+    }
     
     println!("\\nProcessing Request with synthetic data...");
     
