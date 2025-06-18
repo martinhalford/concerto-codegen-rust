@@ -17,8 +17,16 @@ npm install
 
 ### 2. Run the Generator
 
+**Generate Rust Models:**
+
 ```bash
 npm run generate
+```
+
+**Generate ink! Smart Contract:**
+
+```bash
+node src/generate-ink.js
 ```
 
 ### 3. Build and Run the Generated Project
@@ -54,6 +62,11 @@ output/
 │   ├── logic.rs           # Business logic boilerplate with TODO markers
 │   ├── utils.rs           # DateTime and serialization utilities
 │   └── *.rs               # Generated model files (one per namespace)
+└── ink-contract/           # ink! Smart Contract (if generated)
+    ├── Cargo.toml          # ink! project configuration
+    ├── README.md           # Contract documentation
+    └── src/
+        └── lib.rs          # ink! smart contract code
 ```
 
 ### Key Features
@@ -66,12 +79,32 @@ output/
 - ** DateTime Support**: ISO 8601 compatible DateTime serialization
 - ** TODO Markers**: Clear guidance on where to implement business logic
 
+## ink! Smart Contract Generation
+
+Generate deployable ink! smart contracts for Substrate blockchains:
+
+```bash
+node src/generate-ink.js    # Generates output/ink-contract/
+cd output/ink-contract
+cargo contract build       # Build the smart contract
+cargo test                  # Run contract tests
+```
+
+**ink! Features:**
+
+- **✅ Substrate Compatible**: Deploys to any Substrate blockchain with contracts pallet
+- **✅ Storage Management**: Contract state derived from your Concerto models
+- **✅ Event Emission**: Automatic event generation for all contract actions
+- **✅ Access Control**: Owner-based permissions and pausable functionality
+- **✅ Transaction Processing**: Type-safe request/response handling
+
 ## Project Structure
 
 ```
 concerto-codegen-rust/
 ├── src/
-│   ├── generate.js                       # Core generation engine
+│   ├── generate.js                       # Core Rust generation engine
+│   ├── generate-ink.js                   # ink! Smart Contract generator
 │   └── utils.js                          # Project utilities
 ├── archives/
 # Template archives (Accord Project format)

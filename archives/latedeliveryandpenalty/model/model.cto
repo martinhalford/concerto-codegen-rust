@@ -11,7 +11,7 @@ import org.accordproject.runtime@0.2.0.{Request,Response} from https://models.ac
  * must generate from input source text.
  */
 @template
-asset TemplateModel extends Clause {
+asset LateDeliveryAndPenalty extends Clause {
   /**
    * Does the clause include a force majeure provision?
    */
