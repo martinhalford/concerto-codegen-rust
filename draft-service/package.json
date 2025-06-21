@@ -1,0 +1,37 @@
+{
+  "name": "draft-service",
+  "version": "1.0.0",
+  "description": "Off-chain service for processing draft requests from ink! smart contracts",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@accordproject/cicero-core": "0.25.1-20250328175253",
+    "@accordproject/concerto-core": "^3.16.0",
+    "@accordproject/markdown-transform": "^0.16.25",
+    "@accordproject/template-engine": "^2.6.7",
+    "@polkadot/api": "^10.11.2",
+    "@polkadot/api-contract": "^10.11.2",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "ipfs-http-client": "^60.0.1",
+    "markdown-pdf": "^11.0.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "accord-project",
+    "ink",
+    "substrate",
+    "polkadot",
+    "smart-contracts",
+    "ipfs"
+  ],
+  "author": "Martin Halford",
+  "license": "Apache-2.0"
+}

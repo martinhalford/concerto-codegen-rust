@@ -1,0 +1,1 @@
+../../../debug/build/wasm-opt-cxx-sys-63887d4a4dbbdd32/out/cxxbridge/include/wasm-opt-cxx-sys/src/lib.rs.h
