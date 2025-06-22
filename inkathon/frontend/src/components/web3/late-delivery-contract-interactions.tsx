@@ -325,7 +325,8 @@ export const LateDeliveryContractInteractions: FC = () => {
 
             actualResult = {
               penalty: penalty?.toString() || 'N/A',
-              buyerMayTerminate: buyerMayTerminate || false
+              buyerMayTerminate: buyerMayTerminate || false,
+              request: request // Include request parameters for display
             }
 
             console.log('✅ Final actualResult:', actualResult)
@@ -642,17 +643,50 @@ export const LateDeliveryContractInteractions: FC = () => {
               <CardHeader>
                 <CardTitle className="text-base">Process Results</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Calculated Penalty:</span>
-                  <span className="font-mono">{processResult.penalty || 'N/A'}</span>
+              <CardContent className="space-y-3 text-sm">
+                {/* Input Parameters */}
+                <div className="bg-gray-50 border border-gray-200 p-3 rounded space-y-2">
+                  <div className="font-medium text-gray-700 mb-2">Input Parameters:</div>
+                  <div className="flex justify-between text-gray-800">
+                    <span>Force Majeure:</span>
+                    <span>{processResult.request?.force_majeure ? 'Yes' : 'No'}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-800">
+                    <span>Agreed Delivery:</span>
+                    <span className="font-mono text-xs">
+                      {processResult.request?.agreed_delivery ?
+                        new Date(processResult.request.agreed_delivery * 1000).toLocaleString() : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-800">
+                    <span>Delivered At:</span>
+                    <span className="font-mono text-xs">
+                      {processResult.request?.delivered_at?.Some ?
+                        new Date(processResult.request.delivered_at.Some * 1000).toLocaleString() :
+                        'Not delivered'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-800">
+                    <span>Goods Value:</span>
+                    <span className="font-mono">{processResult.request?.goods_value || 'N/A'}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Buyer May Terminate:</span>
-                  <span className={processResult.buyerMayTerminate ? 'text-red-500' : 'text-green-500'}>
-                    {processResult.buyerMayTerminate ? 'Yes' : 'No'}
-                  </span>
+
+                {/* Results */}
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded space-y-2">
+                  <div className="font-medium text-gray-700 mb-2">Calculated Results:</div>
+                  <div className="flex justify-between text-gray-800">
+                    <span>Penalty Amount:</span>
+                    <span className="font-mono text-blue-800 font-semibold">{processResult.penalty || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-800">
+                    <span>Buyer May Terminate:</span>
+                    <span className={`font-semibold ${processResult.buyerMayTerminate ? 'text-red-700' : 'text-green-700'}`}>
+                      {processResult.buyerMayTerminate ? 'Yes' : 'No'}
+                    </span>
+                  </div>
                 </div>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -712,37 +746,61 @@ export const LateDeliveryContractInteractions: FC = () => {
 
                       {/* Process Request Results */}
                       {tx.type === 'process_request' && (
-                        <div className="bg-blue-50 border border-blue-200 p-3 rounded mt-2 space-y-2 text-sm">
-                          <div className="flex justify-between text-gray-800">
-                            <span className="font-medium text-gray-700">Calculated Penalty:</span>
-                            <span className={`font-mono font-semibold ${tx.result.penalty === 'Error' || tx.result.penalty === 'Transaction failed'
-                              ? 'text-red-800'
-                              : (typeof tx.result.penalty === 'string' && tx.result.penalty.includes('Query failed'))
-                                ? 'text-amber-600'
-                                : 'text-blue-800'
-                              }`}>
-                              {tx.result.penalty || 'N/A'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-gray-800">
-                            <span className="font-medium text-gray-700">Buyer May Terminate:</span>
-                            <span className={`font-semibold ${tx.result.buyerMayTerminate ? 'text-red-700' : 'text-green-700'}`}>
-                              {tx.result.buyerMayTerminate ? 'Yes' : 'No'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-gray-800">
-                            <span className="font-medium text-gray-700">Force Majeure:</span>
-                            <span className="text-gray-800">{tx.result.request.force_majeure ? 'Yes' : 'No'}</span>
-                          </div>
-                          <div className="flex justify-between text-gray-800">
-                            <span className="font-medium text-gray-700">Goods Value:</span>
-                            <span className="font-mono text-gray-800">{tx.result.request.goods_value}</span>
-                          </div>
-                          {tx.result.resultObtained === false && tx.result.success && (
-                            <div className="text-xs text-amber-600 italic">
-                              ⚠️ Transaction successful but result query failed
+                        <div className="space-y-3 mt-2">
+                          {/* Input Parameters */}
+                          <div className="bg-gray-50 border border-gray-200 p-3 rounded space-y-2 text-sm">
+                            <div className="font-medium text-gray-700 mb-2">Input Parameters:</div>
+                            <div className="flex justify-between text-gray-800">
+                              <span>Force Majeure:</span>
+                              <span>{tx.result.request.force_majeure ? 'Yes' : 'No'}</span>
                             </div>
-                          )}
+                            <div className="flex justify-between text-gray-800">
+                              <span>Agreed Delivery:</span>
+                              <span className="font-mono text-xs">
+                                {tx.result.request.agreed_delivery ?
+                                  new Date(tx.result.request.agreed_delivery * 1000).toLocaleString() : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-gray-800">
+                              <span>Delivered At:</span>
+                              <span className="font-mono text-xs">
+                                {tx.result.request.delivered_at?.Some ?
+                                  new Date(tx.result.request.delivered_at.Some * 1000).toLocaleString() :
+                                  'Not delivered'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-gray-800">
+                              <span>Goods Value:</span>
+                              <span className="font-mono">{tx.result.request.goods_value}</span>
+                            </div>
+                          </div>
+
+                          {/* Results */}
+                          <div className="bg-blue-50 border border-blue-200 p-3 rounded space-y-2 text-sm">
+                            <div className="font-medium text-gray-700 mb-2">Calculated Results:</div>
+                            <div className="flex justify-between text-gray-800">
+                              <span>Penalty Amount:</span>
+                              <span className={`font-mono font-semibold ${tx.result.penalty === 'Error' || tx.result.penalty === 'Transaction failed'
+                                ? 'text-red-800'
+                                : (typeof tx.result.penalty === 'string' && tx.result.penalty.includes('Query failed'))
+                                  ? 'text-amber-600'
+                                  : 'text-blue-800'
+                                }`}>
+                                {tx.result.penalty || 'N/A'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-gray-800">
+                              <span>Buyer May Terminate:</span>
+                              <span className={`font-semibold ${tx.result.buyerMayTerminate ? 'text-red-700' : 'text-green-700'}`}>
+                                {tx.result.buyerMayTerminate ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                            {tx.result.resultObtained === false && tx.result.success && (
+                              <div className="text-xs text-amber-600 italic">
+                                ⚠️ Transaction successful but result query failed
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
 
