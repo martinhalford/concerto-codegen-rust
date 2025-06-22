@@ -135,30 +135,20 @@ export const LateDeliveryContractInteractions: FC = () => {
     }
 
     try {
-      console.log('Submitting draft request:', templateData)
-      
       const txResult = await contractTxWithToast(api, activeAccount.address, contract, 'request_draft', {}, [templateData])
-      console.log('Draft request transaction result:', txResult)
       
-      // Add to transaction history
-      setTransactionHistory(prev => [...prev, {
-        type: 'request_draft',
-        result: { 
-          templateData, 
-          txHash: txResult.extrinsicHash?.toString(),
-          blockHash: txResult.blockHash?.toString(),
-          blockNumber: txResult.blockNumber?.toString(),
-          isCompleted: txResult.isCompleted,
-          isError: txResult.isError,
-          contractEvents: txResult.contractEvents?.map((event: any) => ({
-            name: event.event?.identifier || 'Unknown',
-            data: event.event?.data?.toString() || 'No data'
-          })),
-          gasConsumed: txResult.dryResult?.gasConsumed?.toString(),
-          success: txResult.isCompleted && !txResult.isError && !txResult.dispatchError
-        },
-        timestamp: new Date()
-      }])
+              // Add to transaction history
+        setTransactionHistory(prev => [...prev, {
+          type: 'request_draft',
+          result: { 
+            templateData, 
+            txHash: txResult.extrinsicHash?.toString(),
+            blockHash: txResult.blockHash?.toString(),
+            blockNumber: txResult.blockNumber?.toString(),
+            success: txResult.isCompleted && !txResult.isError
+          },
+          timestamp: new Date()
+        }])
       
       requestDraftForm.reset()
       
@@ -194,26 +184,14 @@ export const LateDeliveryContractInteractions: FC = () => {
         goods_value: goodsValue,
       }
 
-      console.log('Submitting request:', request)
-      console.log('Request structure details:', {
-        force_majeure: request.force_majeure,
-        agreed_delivery: request.agreed_delivery,
-        delivered_at: request.delivered_at,
-        goods_value: request.goods_value,
-        agreed_delivery_date: new Date(request.agreed_delivery * 1000).toISOString(),
-        delivered_at_date: request.delivered_at?.Some ? new Date(request.delivered_at.Some * 1000).toISOString() : 'Not delivered',
-        delay_seconds: request.delivered_at?.Some ? (request.delivered_at.Some - request.agreed_delivery) : 'N/A'
-      })
+      console.log('Processing late delivery request...')
 
       // First, do a dry-run to see what the result would be
       try {
         const dryRunResult = await contractQuery(api, activeAccount.address, contract, 'process_request', {}, [request])
         const { output, isError, decodedOutput } = decodeOutput(dryRunResult, contract, 'process_request')
         
-        console.log('Raw dry run result:', dryRunResult)
-        console.log('Raw dry run result stringified:', JSON.stringify(dryRunResult, null, 2))
-        console.log('Dry run result output field:', dryRunResult.output)
-        console.log('Dry run result result field:', dryRunResult.result)
+
         
         if (!isError && output) {
           // Handle different possible result structures
@@ -229,9 +207,7 @@ export const LateDeliveryContractInteractions: FC = () => {
             processedResult = processedResult.Ok
           }
           
-          console.log('Processed result:', processedResult)
-          console.log('Processed result type:', typeof processedResult)
-          console.log('Processed result keys:', processedResult ? Object.keys(processedResult) : 'No keys')
+
           
           // Try different property access patterns
           let penalty = processedResult?.penalty || 
@@ -247,48 +223,48 @@ export const LateDeliveryContractInteractions: FC = () => {
                                  processedResult?.value?.buyer_may_terminate ||
                                  processedResult?.data?.buyer_may_terminate
           
-          console.log('Extracted penalty:', penalty)
-          console.log('Extracted buyerMayTerminate:', buyerMayTerminate)
+
           
           setProcessResult({
             penalty: penalty?.toString() || 'N/A',
             buyerMayTerminate: buyerMayTerminate
           })
           
-          console.log('Set process result:', {
-            penalty: penalty?.toString() || 'N/A',
-            buyerMayTerminate: buyerMayTerminate
-          })
-        } else {
-          console.log('Dry run failed or no output:', { isError, decodedOutput })
+
         }
       } catch (dryRunError) {
-        console.log('Dry run failed, proceeding with transaction:', dryRunError)
+        // Dry run failed, proceed with transaction anyway
       }
 
       // Execute the actual transaction
       const txResult = await contractTxWithToast(api, activeAccount.address, contract, 'process_request', {}, [request])
-      console.log('Transaction result:', txResult)
+      console.log('Transaction result for debugging:', {
+        isCompleted: txResult.isCompleted,
+        isError: txResult.isError,
+        dispatchError: txResult.dispatchError,
+        success: txResult.isCompleted && !txResult.isError
+      })
       
-      // Add to transaction history
-      setTransactionHistory(prev => [...prev, {
-        type: 'process_request',
-        result: { 
-          request, 
-          txHash: txResult.extrinsicHash?.toString(),
-          blockHash: txResult.blockHash?.toString(),
-          blockNumber: txResult.blockNumber?.toString(),
-          isCompleted: txResult.isCompleted,
-          isError: txResult.isError,
-          contractEvents: txResult.contractEvents?.map((event: any) => ({
-            name: event.event?.identifier || 'Unknown',
-            data: event.event?.data?.toString() || 'No data'
-          })),
-          gasConsumed: txResult.dryResult?.gasConsumed?.toString(),
-          success: txResult.isCompleted && !txResult.isError && !txResult.dispatchError
-        },
-        timestamp: new Date()
-      }])
+              // Add to transaction history with current process result
+        console.log('Adding to history with processResult:', processResult)
+        setTransactionHistory(prev => [...prev, {
+          type: 'process_request',
+          result: { 
+            request: {
+              force_majeure: request.force_majeure,
+              agreed_delivery: request.agreed_delivery,
+              delivered_at: request.delivered_at,
+              goods_value: request.goods_value
+            }, 
+            penalty: processResult?.penalty || 'N/A',
+            buyerMayTerminate: processResult?.buyerMayTerminate || false,
+            txHash: txResult.extrinsicHash?.toString(),
+            blockHash: txResult.blockHash?.toString(),
+            blockNumber: txResult.blockNumber?.toString(),
+            success: processResult?.penalty !== undefined  // Success if we got a penalty calculation
+          },
+          timestamp: new Date()
+        }])
       
       processRequestForm.reset()
       
@@ -520,66 +496,7 @@ export const LateDeliveryContractInteractions: FC = () => {
             </Card>
           )}
 
-          {/* Debug Section - Temporary */}
-          <Card className="lg:col-span-2 border-orange-200 bg-orange-50">
-            <CardHeader>
-              <CardTitle className="text-base text-orange-800">Debug Info (Temporary)</CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs">
-              <div className="space-y-2">
-                <div>
-                  <span className="font-semibold">Process Result State:</span>
-                  <pre className="bg-white p-2 rounded mt-1 overflow-auto max-h-32">
-                    {JSON.stringify(processResult, null, 2)}
-                  </pre>
-                </div>
-                
-                <div>
-                  <span className="font-semibold">Contract Settings (might affect penalty calculation):</span>
-                  <div className="bg-white p-2 rounded mt-1">
-                    <div><strong>Contract Address:</strong> {contractAddress}</div>
-                    <div><strong>Expected Address:</strong> 5HVTBVbgNvQWHRmYaQkQgGCxHRFt5pZpz2nNgijyTSDLTraf</div>
-                    <div className={contractAddress === "5HVTBVbgNvQWHRmYaQkQgGCxHRFt5pZpz2nNgijyTSDLTraf" ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
-                      {contractAddress === "5HVTBVbgNvQWHRmYaQkQgGCxHRFt5pZpz2nNgijyTSDLTraf" ? "✓ Correct Contract" : "✗ Wrong Contract"}
-                    </div>
-                    <hr className="my-1"/>
-                    <div>Penalty Duration: {contractInfo.penaltyDuration} seconds</div>
-                    <div>Penalty Percentage: {contractInfo.penaltyPercentage}%</div>
-                    <div>Cap Percentage: {contractInfo.capPercentage}%</div>
-                    <div>Force Majeure: {contractInfo.forceMajeure ? 'Yes' : 'No'}</div>
-                  </div>
-                </div>
-                
-                <div className="text-orange-700">
-                  <strong>Console Debugging:</strong><br/>
-                  1. Look for "Raw dry run result:" - shows the complete contract response<br/>
-                  2. Look for "Processed result:" - shows what we extracted<br/>
-                  3. Look for "Processed result keys:" - shows available properties<br/>
-                  4. Look for "Extracted penalty:" and "Extracted buyerMayTerminate:" - shows individual values<br/>
-                  <br/>
-                  <strong>Penalty Logic Analysis:</strong><br/>
-                  - If penalty is 0, check if: delivery was on time, force majeure applies, or penalty duration has passed<br/>
-                  - Delivered At (1641081600) vs Agreed Delivery (1640995200) = {
-                    ((1641081600 - 1640995200) / 86400).toFixed(1)
-                  } days late<br/>
-                  - Delay in seconds: {(1641081600 - 1640995200).toLocaleString()}<br/>
-                  - Contract penalty duration: {contractInfo.penaltyDuration} seconds<br/>
-                  - Contract penalty rate: {contractInfo.penaltyPercentage}%<br/>
-                  - Contract cap: {contractInfo.capPercentage}%<br/>
-                  <br/>
-                  <strong>Expected Penalty Calculation:</strong><br/>
-                  - Goods Value: 1,000,000<br/>
-                  - If 20% penalty rate → Expected: {(1000000 * 0.20).toLocaleString()}<br/>
-                  - If 30% cap applies → Max penalty: {(1000000 * 0.30).toLocaleString()}<br/>
-                  <br/>
-                  <strong>Possible Issues:</strong><br/>
-                  - Contract settings not loaded from new deployment<br/>
-                  - Additional contract logic conditions not met<br/>
-                  - Penalty duration or other parameters preventing calculation
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
 
           {/* My Drafts */}
           <Card className="lg:col-span-2">
@@ -611,100 +528,54 @@ export const LateDeliveryContractInteractions: FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {transactionHistory.slice(-5).reverse().map((tx, index) => (
+                  {transactionHistory.slice(-3).reverse().map((tx, index) => (
                     <div key={index} className="p-3 border rounded text-sm">
                       <div className="flex justify-between items-center mb-2">
                         <span className="font-semibold capitalize">{tx.type.replace('_', ' ')}</span>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          tx.result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {tx.result.success ? 'Success' : 'Failed'}
-                        </span>
-                        <span className="text-gray-500 text-xs">
-                          {tx.timestamp.toLocaleTimeString()}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            tx.result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {tx.result.success ? 'Success' : 'Failed'}
+                          </span>
+                          <span className="text-gray-500 text-xs">
+                            {tx.timestamp.toLocaleTimeString()}
+                          </span>
+                        </div>
                       </div>
                       
-                      <div className="space-y-2 text-xs">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <span className="font-semibold">Tx Hash:</span>
-                            <div className="font-mono text-gray-600 break-all">
-                              {tx.result.txHash || 'N/A'}
-                            </div>
+                      {/* Process Request Results */}
+                      {tx.type === 'process_request' && (
+                        <div className="bg-blue-50 border border-blue-200 p-3 rounded mt-2 space-y-2 text-sm">
+                          <div className="flex justify-between text-gray-800">
+                            <span className="font-medium text-gray-700">Calculated Penalty:</span>
+                            <span className="font-mono text-blue-800 font-semibold">{tx.result.penalty || 'N/A'}</span>
                           </div>
-                          <div>
-                            <span className="font-semibold">Block:</span>
-                            <div className="font-mono text-gray-600">
-                              #{tx.result.blockNumber || 'N/A'}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {tx.result.gasConsumed && (
-                          <div>
-                            <span className="font-semibold">Gas Consumed:</span>
-                            <span className="font-mono text-gray-600 ml-1">
-                              {tx.result.gasConsumed}
+                          <div className="flex justify-between text-gray-800">
+                            <span className="font-medium text-gray-700">Buyer May Terminate:</span>
+                            <span className={`font-semibold ${tx.result.buyerMayTerminate ? 'text-red-700' : 'text-green-700'}`}>
+                              {tx.result.buyerMayTerminate ? 'Yes' : 'No'}
                             </span>
                           </div>
-                        )}
-                        
-                        {tx.result.contractEvents && tx.result.contractEvents.length > 0 && (
-                          <div>
-                            <span className="font-semibold">Events:</span>
-                            <div className="ml-2">
-                              {tx.result.contractEvents.map((event: any, eventIndex: number) => (
-                                <div key={eventIndex} className="text-gray-600">
-                                  • {event.name}: {event.data}
-                                </div>
-                              ))}
-                            </div>
+                          <div className="flex justify-between text-gray-800">
+                            <span className="font-medium text-gray-700">Force Majeure:</span>
+                            <span className="text-gray-800">{tx.result.request.force_majeure ? 'Yes' : 'No'}</span>
                           </div>
-                        )}
-                        
-                        {tx.type === 'process_request' && tx.result.request && (
-                          <div>
-                            <span className="font-semibold">Request Data:</span>
-                            <div className="bg-gray-50 p-2 rounded mt-1 space-y-1">
-                              <div>
-                                <span className="font-medium">Force Majeure:</span> 
-                                <span className="ml-1">{tx.result.request.force_majeure ? 'Yes' : 'No'}</span>
-                              </div>
-                              <div>
-                                <span className="font-medium">Agreed Delivery:</span> 
-                                <span className="ml-1">
-                                  {tx.result.request.agreed_delivery ? 
-                                    new Date(Number(tx.result.request.agreed_delivery) * 1000).toLocaleString() : 
-                                    'N/A'
-                                  }
-                                </span>
-                              </div>
-                              <div>
-                                <span className="font-medium">Delivered At:</span> 
-                                <span className="ml-1">
-                                  {tx.result.request.delivered_at?.Some ? 
-                                    new Date(Number(tx.result.request.delivered_at.Some) * 1000).toLocaleString() : 
-                                    'Not delivered'
-                                  }
-                                </span>
-                              </div>
-                              <div>
-                                <span className="font-medium">Goods Value:</span> 
-                                <span className="ml-1">{tx.result.request.goods_value}</span>
-                              </div>
-                            </div>
+                          <div className="flex justify-between text-gray-800">
+                            <span className="font-medium text-gray-700">Goods Value:</span>
+                            <span className="font-mono text-gray-800">{tx.result.request.goods_value}</span>
                           </div>
-                        )}
-                        
-                        {tx.type === 'request_draft' && tx.result.templateData && (
-                          <div>
-                            <span className="font-semibold">Template Data:</span>
-                            <div className="bg-gray-50 p-2 rounded mt-1 font-mono">
-                              {tx.result.templateData}
-                            </div>
-                          </div>
-                        )}
+                        </div>
+                      )}
+                      
+                      {/* Transaction Details */}
+                      <div className="mt-2 text-xs text-gray-500">
+                        <div className="flex justify-between">
+                          <span>Block: #{tx.result.blockNumber}</span>
+                          <span className="font-mono truncate ml-2 max-w-32">
+                            {tx.result.txHash?.slice(0, 10)}...
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}

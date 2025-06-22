@@ -8,7 +8,6 @@ import { toast } from 'react-hot-toast'
 import { HomePageTitle } from '@/app/components/home-page-title'
 import { ChainInfo } from '@/components/web3/chain-info'
 import { ConnectButton } from '@/components/web3/connect-button'
-import { GreeterContractInteractions } from '@/components/web3/greeter-contract-interactions'
 import { LateDeliveryContractInteractions } from '@/components/web3/late-delivery-contract-interactions'
 
 export default function HomePage() {
@@ -35,16 +34,9 @@ export default function HomePage() {
           </div>
 
           {/* Contract Interactions */}
-          <div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* Greeter Read/Write Contract Interactions */}
-            <div className="flex justify-center">
-              <GreeterContractInteractions />
-            </div>
-
+          <div className="w-full flex justify-center">
             {/* Late Delivery & Penalty Contract Interactions */}
-            <div className="xl:col-span-1 flex justify-center">
-              <LateDeliveryContractInteractions />
-            </div>
+            <LateDeliveryContractInteractions />
           </div>
         </div>
       </div>
