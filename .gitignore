@@ -11,6 +11,10 @@ output/
 /output
 *.generated.*
 
+# Rust build artifacts
+**/target/
+target/
+
 # Template archives (uncomment if you want to ignore them)
 # archives/
 
