@@ -2,7 +2,6 @@ const { ApiPromise, WsProvider } = require("@polkadot/api");
 const { ContractPromise } = require("@polkadot/api-contract");
 const { Keyring } = require("@polkadot/keyring");
 const { cryptoWaitReady } = require("@polkadot/util-crypto");
-const { create: createIpfsClient } = require("ipfs-http-client");
 const { TemplateArchiveProcessor } = require("@accordproject/template-engine");
 const { Template } = require("@accordproject/cicero-core");
 const winston = require("winston");
@@ -35,10 +34,11 @@ class DraftService {
     this.contract = null;
     this.keyring = null;
     this.serviceAccount = null;
-    this.ipfs = null;
     this.template = null;
     this.templateProcessor = null;
     this.isRunning = false;
+    this.documentsDir =
+      process.env.DOCUMENTS_OUTPUT_DIR || "./generated-documents";
   }
 
   async initialize() {
@@ -73,9 +73,8 @@ class DraftService {
       );
       logger.info(`Contract initialized: ${process.env.CONTRACT_ADDRESS}`);
 
-      // Initialize IPFS
-      this.ipfs = createIpfsClient({ url: process.env.IPFS_API_URL });
-      logger.info(`IPFS client initialized: ${process.env.IPFS_API_URL}`);
+      // Initialize local documents directory
+      this.initializeDocumentsDirectory();
 
       // Initialize Accord Project template
       await this.initializeTemplate();
@@ -88,102 +87,30 @@ class DraftService {
   }
 
   loadContractAbi() {
-    // For this example, we'll use a simplified ABI
-    // In practice, you'd load this from the contract metadata
-    return {
-      spec: {
-        constructors: [],
-        docs: [],
-        events: [
-          {
-            args: [
-              {
-                indexed: true,
-                label: "requester",
-                type: { type: 0, displayName: ["AccountId"] },
-              },
-              {
-                indexed: false,
-                label: "request_id",
-                type: { type: 1, displayName: ["u64"] },
-              },
-              {
-                indexed: false,
-                label: "template_data",
-                type: { type: 2, displayName: ["String"] },
-              },
-              {
-                indexed: false,
-                label: "timestamp",
-                type: { type: 1, displayName: ["u64"] },
-              },
-            ],
-            docs: [],
-            label: "DraftRequested",
-          },
-        ],
-        messages: [
-          {
-            args: [
-              { label: "request_id", type: { type: 1, displayName: ["u64"] } },
-              {
-                label: "ipfs_hash",
-                type: { type: 2, displayName: ["String"] },
-              },
-            ],
-            docs: [],
-            label: "submit_draft_result",
-            mutating: true,
-            payable: false,
-            returnType: { type: 3, displayName: ["Result"] },
-            selector: "0x12345678",
-          },
-          {
-            args: [
-              { label: "request_id", type: { type: 1, displayName: ["u64"] } },
-              {
-                label: "error_message",
-                type: { type: 2, displayName: ["String"] },
-              },
-            ],
-            docs: [],
-            label: "submit_draft_error",
-            mutating: true,
-            payable: false,
-            returnType: { type: 3, displayName: ["Result"] },
-            selector: "0x87654321",
-          },
-        ],
-      },
-      types: [
-        {
-          id: 0,
-          type: {
-            def: { composite: { fields: [{ type: 4 }] } },
-            path: ["ink_primitives", "types", "AccountId"],
-          },
-        },
-        { id: 1, type: { def: { primitive: "u64" } } },
-        { id: 2, type: { def: { primitive: "str" } } },
-        {
-          id: 3,
-          type: {
-            def: {
-              variant: {
-                variants: [
-                  { fields: [{ type: 5 }], index: 0, name: "Ok" },
-                  { fields: [{ type: 6 }], index: 1, name: "Err" },
-                ],
-              },
-            },
-          },
-        },
-        { id: 4, type: { def: { array: { len: 32, type: 7 } } } },
-        { id: 5, type: { def: { tuple: [] } } },
-        { id: 6, type: { def: { primitive: "str" } } },
-        { id: 7, type: { def: { primitive: "u8" } } },
-      ],
-    };
+    // Load the actual contract ABI from the deployment
+    const contractPath = path.resolve(
+      "../inkathon/contracts/deployments/late-delivery-and-penalty/late-delivery-and-penalty.json"
+    );
+    try {
+      const contractData = JSON.parse(fs.readFileSync(contractPath, "utf8"));
+      logger.info(`Contract ABI loaded from: ${contractPath}`);
+      return contractData;
+    } catch (error) {
+      logger.error("Failed to load contract ABI:", error);
+      throw error;
+    }
+  }
+
+  initializeDocumentsDirectory() {
+    try {
+      if (!fs.existsSync(this.documentsDir)) {
+        fs.mkdirSync(this.documentsDir, { recursive: true });
+      }
+      logger.info(`Documents directory initialized: ${this.documentsDir}`);
+    } catch (error) {
+      logger.error("Failed to initialize documents directory:", error);
+      throw error;
+    }
   }
 
   async initializeTemplate() {
@@ -230,12 +157,170 @@ class DraftService {
       events.forEach((record) => {
         const { event } = record;
 
+        logger.debug(`Event received: ${event.section}.${event.method}`);
+
         // Check if this is a contract event
         if (
           event.section === "contracts" &&
           event.method === "ContractEmitted"
         ) {
-          this.handleContractEvent(event.data);
+          logger.debug("ContractEmitted event detected");
+          logger.debug("Event data:", event.data.toHuman());
+
+          // Try to decode the event using the contract
+          try {
+            // Get the human-readable format which has the correct structure
+            const humanData = event.data.toHuman();
+            const contractAddress = humanData.contract;
+            const hexData = humanData.data;
+
+            logger.debug("Contract address:", contractAddress);
+            logger.debug("Raw hex data:", hexData);
+            logger.debug("Full human data:", JSON.stringify(humanData));
+
+            // Also try to get raw data directly
+            if (!hexData || !contractAddress) {
+              logger.debug("Trying to extract from raw event data...");
+              logger.debug("Event data toString:", event.data.toString());
+              logger.debug("Event data type:", typeof event.data);
+            }
+
+            // Try to process regardless if we can find the hex data in the debug log
+            if (
+              contractAddress === process.env.CONTRACT_ADDRESS ||
+              humanData.contract === process.env.CONTRACT_ADDRESS ||
+              JSON.stringify(humanData).includes(process.env.CONTRACT_ADDRESS)
+            ) {
+              logger.info("Event is from our contract, parsing hex data...");
+
+              // Try multiple ways to get the hex data
+              let actualHexData = hexData;
+              if (!actualHexData || actualHexData === "{}") {
+                // Try to extract from the full event data string
+                const eventStr = JSON.stringify(humanData);
+                const hexMatch = eventStr.match(/"data":"(0x[a-fA-F0-9]+)"/);
+                if (hexMatch) {
+                  actualHexData = hexMatch[1];
+                  logger.debug("Extracted hex from string:", actualHexData);
+                }
+              }
+
+              // Parse the hex data manually since ABI decoding isn't working
+              if (actualHexData && actualHexData.startsWith("0x")) {
+                try {
+                  // Remove 0x prefix and convert to buffer
+                  const buffer = Buffer.from(actualHexData.slice(2), "hex");
+                  const bufferStr = buffer.toString();
+
+                  logger.debug(
+                    "Buffer as string (first 200 chars):",
+                    bufferStr.substring(0, 200)
+                  );
+                  logger.debug("Buffer length:", bufferStr.length);
+                  logger.debug("Looking for JSON pattern...");
+
+                  // Find the JSON string in the buffer
+                  // Try different patterns to find the JSON
+                  let jsonStart = bufferStr.indexOf('{"$class"');
+                  if (jsonStart === -1) {
+                    jsonStart = bufferStr.indexOf('{"\\$class"'); // Escaped version
+                  }
+                  if (jsonStart === -1) {
+                    jsonStart = bufferStr.indexOf('{"$class"'); // Different escaping
+                  }
+                  if (jsonStart === -1) {
+                    // Look for the hex pattern directly
+                    const hexPattern = "7b2224636c617373223a22"; // hex for '{"$class":"'
+                    const hexBuffer = actualHexData.slice(2); // Remove 0x
+                    const hexStart = hexBuffer.indexOf(hexPattern);
+                    if (hexStart !== -1) {
+                      // Extract from hex and convert to string
+                      const jsonHexStart = hexStart;
+                      // Find the end by looking for the closing brace pattern
+                      let jsonHexEnd = hexBuffer.length;
+
+                      // Extract and convert
+                      const jsonHex = hexBuffer.substring(jsonHexStart);
+                      const jsonBuffer = Buffer.from(jsonHex, "hex");
+                      const jsonStr = jsonBuffer.toString();
+
+                      // Find the actual end of the JSON in the string
+                      const realStart = jsonStr.indexOf('{"$class"');
+                      if (realStart !== -1) {
+                        let braceCount = 0;
+                        let realEnd = realStart;
+                        for (let i = realStart; i < jsonStr.length; i++) {
+                          if (jsonStr[i] === "{") braceCount++;
+                          if (jsonStr[i] === "}") {
+                            braceCount--;
+                            if (braceCount === 0) {
+                              realEnd = i + 1;
+                              break;
+                            }
+                          }
+                        }
+
+                        const extractedJson = jsonStr.substring(
+                          realStart,
+                          realEnd
+                        );
+                        logger.info(
+                          "Successfully extracted template data via hex!"
+                        );
+                        logger.debug("Template JSON:", extractedJson);
+
+                        // Process the request with extracted data
+                        this.processDraftRequest({
+                          requester: contractAddress,
+                          request_id: Date.now(),
+                          template_data: extractedJson,
+                          timestamp: Date.now(),
+                        });
+                        return; // Exit early
+                      }
+                    }
+                  }
+
+                  logger.debug("JSON start position:", jsonStart);
+
+                  if (jsonStart !== -1) {
+                    // Find the end of the JSON
+                    let braceCount = 0;
+                    let jsonEnd = jsonStart;
+
+                    for (let i = jsonStart; i < bufferStr.length; i++) {
+                      if (bufferStr[i] === "{") braceCount++;
+                      if (bufferStr[i] === "}") {
+                        braceCount--;
+                        if (braceCount === 0) {
+                          jsonEnd = i + 1;
+                          break;
+                        }
+                      }
+                    }
+
+                    const jsonString = bufferStr.substring(jsonStart, jsonEnd);
+                    logger.info("Successfully extracted template data!");
+                    logger.debug("Template JSON:", jsonString);
+
+                    // Process the request with extracted data
+                    this.processDraftRequest({
+                      requester: contractAddress, // Use contract as requester for now
+                      request_id: Date.now(), // Use timestamp as request ID
+                      template_data: jsonString,
+                      timestamp: Date.now(),
+                    });
+                  } else {
+                    logger.warn("Could not find JSON in hex data");
+                  }
+                } catch (parseError) {
+                  logger.error("Error parsing hex data:", parseError);
+                }
+              }
+            }
+          } catch (error) {
+            logger.error("Error processing contract event:", error);
+          }
         }
       });
     });
@@ -250,56 +335,90 @@ class DraftService {
 
   async handleContractEvent(eventData) {
     try {
+      logger.debug("Raw contract event received:", eventData);
       const [contractAddress, eventBytes] = eventData;
+
+      logger.debug("Contract address from event:", contractAddress.toString());
+      logger.debug("Expected contract address:", process.env.CONTRACT_ADDRESS);
 
       // Check if this event is from our contract
       if (contractAddress.toString() !== process.env.CONTRACT_ADDRESS) {
+        logger.debug("Event from different contract, ignoring");
         return;
       }
 
+      logger.info("Event from our contract, attempting to decode...");
+
       // Decode the event (simplified - in practice you'd use proper ABI decoding)
-      const eventInfo = this.decodeContractEvent(eventBytes);
+      const eventInfo = this.decodeContractEvent(eventData);
+
+      logger.debug("Decoded event info:", eventInfo);
 
       if (eventInfo && eventInfo.name === "DraftRequested") {
+        logger.info("DraftRequested event detected!");
         await this.processDraftRequest(eventInfo.data);
+      } else {
+        logger.debug("Event is not DraftRequested or failed to decode");
       }
     } catch (error) {
       logger.error("Error handling contract event:", error);
     }
   }
 
-  decodeContractEvent(eventBytes) {
-    // Simplified event decoding - in practice you'd use proper ABI decoding
-    // This is just a placeholder for demonstration
+  decodeContractEvent(eventData) {
     try {
-      // For now, we'll simulate receiving a DraftRequested event
-      return {
-        name: "DraftRequested",
-        data: {
-          requester: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-          request_id: 1,
-          template_data: JSON.stringify({
-            $class: "io.clause.latedeliveryandpenalty@0.1.0.TemplateModel",
-            forceMajeure: true,
-            penaltyDuration: {
-              $class: "org.accordproject.time@0.3.0.Duration",
-              amount: 2,
-              unit: "days",
+      const [contractAddress, eventBytes] = eventData;
+
+      // Check if this event is from our contract
+      if (contractAddress.toString() !== process.env.CONTRACT_ADDRESS) {
+        return null;
+      }
+
+      logger.debug("Attempting to decode event bytes:", eventBytes);
+
+      // Use the contract ABI to decode the event
+      const decoded = this.contract.abi.decodeEvent(eventBytes);
+      logger.debug("Raw decoded result:", decoded);
+
+      // The decoded event should have event and args properties
+      if (decoded && decoded.event) {
+        logger.debug("Event identifier:", decoded.event.identifier);
+        logger.debug("Event args:", decoded.args);
+
+        if (decoded.event.identifier === "DraftRequested") {
+          // Extract the arguments - they should be in order: requester, request_id, template_data, timestamp
+          const args = decoded.args;
+
+          return {
+            name: "DraftRequested",
+            data: {
+              requester: args[0] ? args[0].toString() : "unknown",
+              request_id: args[1]
+                ? args[1].toNumber
+                  ? args[1].toNumber()
+                  : parseInt(args[1])
+                : 0,
+              template_data: args[2] ? args[2].toString() : "{}",
+              timestamp: args[3]
+                ? args[3].toNumber
+                  ? args[3].toNumber()
+                  : parseInt(args[3])
+                : Date.now(),
             },
-            penaltyPercentage: 10.5,
-            capPercentage: 55,
-            termination: {
-              $class: "org.accordproject.time@0.3.0.Duration",
-              amount: 15,
-              unit: "days",
-            },
-            fractionalPart: "days",
-          }),
-          timestamp: Date.now(),
-        },
-      };
+          };
+        } else {
+          logger.debug(
+            `Event is ${decoded.event.identifier}, not DraftRequested`
+          );
+        }
+      } else {
+        logger.debug("No event identifier found in decoded result");
+      }
+
+      return null;
     } catch (error) {
       logger.error("Error decoding contract event:", error);
+      logger.debug("Event data:", eventData);
       return null;
     }
   }
@@ -313,33 +432,44 @@ class DraftService {
       // Parse template data
       const templateModelData = JSON.parse(template_data);
 
-      // Generate the draft using your existing draft.js logic
+      // Generate the draft using the template processor
       const draftMarkdown = await this.templateProcessor.draft(
         templateModelData,
         "markdown",
         { verbose: false }
       );
 
-      // Store in IPFS
-      const ipfsResult = await this.ipfs.add(draftMarkdown);
-      const ipfsHash = ipfsResult.cid.toString();
+      // Generate filename and save to local filesystem
+      const filename = `contract-${request_id}-${Date.now()}.md`;
+      const filepath = path.join(this.documentsDir, filename);
 
-      logger.info(`Draft generated and stored in IPFS: ${ipfsHash}`);
+      fs.writeFileSync(filepath, draftMarkdown);
 
-      // Submit result back to contract
-      await this.submitDraftResult(request_id, ipfsHash);
+      // Create document URL for accessing the file
+      const documentUrl = `${process.env.DOCUMENTS_BASE_URL}/${filename}`;
+
+      logger.info(`Draft generated and saved to: ${filepath}`);
+      logger.info(`Document accessible at: ${documentUrl}`);
+
+      // Submit result back to contract (using document URL instead of IPFS hash)
+      await this.submitDraftResult(request_id, documentUrl);
     } catch (error) {
       logger.error(`Error processing draft request ${request_id}:`, error);
       await this.submitDraftError(request_id, error.message);
     }
   }
 
-  async submitDraftResult(requestId, ipfsHash) {
+  async submitDraftResult(requestId, documentUrl) {
     try {
       const tx = this.contract.tx.submitDraftResult(
-        { gasLimit: -1 },
+        {
+          gasLimit: this.api.registry.createType("WeightV2", {
+            refTime: 30000000000,
+            proofSize: 1000000,
+          }),
+        },
         requestId,
-        ipfsHash
+        documentUrl
       );
 
       await tx.signAndSend(this.serviceAccount, (result) => {
@@ -364,7 +494,12 @@ class DraftService {
   async submitDraftError(requestId, errorMessage) {
     try {
       const tx = this.contract.tx.submitDraftError(
-        { gasLimit: -1 },
+        {
+          gasLimit: this.api.registry.createType("WeightV2", {
+            refTime: 30000000000,
+            proofSize: 1000000,
+          }),
+        },
         requestId,
         errorMessage
       );
@@ -392,6 +527,7 @@ class DraftService {
     const app = express();
     const port = process.env.PORT || 3001;
 
+    // Health check endpoint
     app.get("/health", (req, res) => {
       res.json({
         status: "healthy",
@@ -401,16 +537,75 @@ class DraftService {
       });
     });
 
+    // Status endpoint
     app.get("/status", (req, res) => {
       res.json({
         isRunning: this.isRunning,
         connected: {
           substrate: !!this.api,
-          ipfs: !!this.ipfs,
           contract: !!this.contract,
+          template: !!this.template,
         },
+        documentsDir: this.documentsDir,
         lastActivity: new Date().toISOString(),
       });
+    });
+
+    // Serve generated documents
+    app.get("/documents/:filename", (req, res) => {
+      const filename = req.params.filename;
+      const filepath = path.join(this.documentsDir, filename);
+
+      // Security check - ensure filename doesn't contain path traversal
+      if (
+        filename.includes("..") ||
+        filename.includes("/") ||
+        filename.includes("\\")
+      ) {
+        return res.status(400).json({ error: "Invalid filename" });
+      }
+
+      // Check if file exists
+      if (!fs.existsSync(filepath)) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      // Set content type for markdown files
+      res.setHeader("Content-Type", "text/markdown");
+      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+
+      // Stream the file
+      const fileStream = fs.createReadStream(filepath);
+      fileStream.pipe(res);
+    });
+
+    // List all generated documents
+    app.get("/documents", (req, res) => {
+      try {
+        const files = fs
+          .readdirSync(this.documentsDir)
+          .filter((file) => file.endsWith(".md"))
+          .map((file) => {
+            const filepath = path.join(this.documentsDir, file);
+            const stats = fs.statSync(filepath);
+            return {
+              filename: file,
+              url: `${process.env.DOCUMENTS_BASE_URL}/${file}`,
+              size: stats.size,
+              created: stats.birthtime,
+              modified: stats.mtime,
+            };
+          })
+          .sort((a, b) => b.created - a.created);
+
+        res.json({
+          documents: files,
+          count: files.length,
+        });
+      } catch (error) {
+        logger.error("Error listing documents:", error);
+        res.status(500).json({ error: "Failed to list documents" });
+      }
     });
 
     app.listen(port, () => {
