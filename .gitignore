@@ -160,3 +160,6 @@ dist
 
 # Draft service generated documents
 draft-service/generated-documents/
+
+# Generated Rust code output
+output/

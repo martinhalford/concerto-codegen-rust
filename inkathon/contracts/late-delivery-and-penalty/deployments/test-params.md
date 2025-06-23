@@ -24,5 +24,7 @@ Agreed Delivery: 1703980800
 Delivered At: 1703980800
 Goods Value: 1000000
 
+## Request Draft
 
+{"$class":"io.clause.latedeliveryandpenalty@0.1.0.LateDeliveryAndPenalty","clauseId":"late-delivery-clause-1","forceMajeure":true,"penaltyDuration":{"$class":"org.accordproject.time@0.3.0.Duration","amount":3,"unit":"days"},"penaltyPercentage":12.5,"capPercentage":60,"termination":{"$class":"org.accordproject.time@0.3.0.Duration","amount":20,"unit":"days"},"fractionalPart":"days"}
 

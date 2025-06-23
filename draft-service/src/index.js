@@ -116,6 +116,7 @@ class DraftService {
   async initializeTemplate() {
     try {
       const templatePath = path.resolve(process.env.TEMPLATE_ARCHIVE_PATH);
+
       this.template = await Template.fromDirectory(templatePath);
       this.templateProcessor = new TemplateArchiveProcessor(this.template);
       logger.info(`Template loaded from: ${templatePath}`);
