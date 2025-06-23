@@ -6,10 +6,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Generated output
-output/
-/output
-*.generated.*
+# # Generated output
+# output/
+# /output
+# *.generated.*
 
 # Rust build artifacts
 **/target/
