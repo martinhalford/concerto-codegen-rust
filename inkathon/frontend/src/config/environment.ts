@@ -12,4 +12,7 @@ export const env = {
 
   defaultChain: process.env.NEXT_PUBLIC_DEFAULT_CHAIN!,
   supportedChains: getSupportedChains(),
+
+  // Draft Service Configuration
+  draftServiceUrl: process.env.NEXT_PUBLIC_DRAFT_SERVICE_URL || 'http://localhost:3001',
 }

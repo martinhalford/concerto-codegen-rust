@@ -89,7 +89,7 @@ class DraftService {
   loadContractAbi() {
     // Load the actual contract ABI from the deployment
     const contractPath = path.resolve(
-      "../inkathon/contracts/deployments/late-delivery-and-penalty/late-delivery-and-penalty.json"
+      "../inkathon/contracts/late-delivery-and-penalty/deployments/late-delivery-and-penalty.json"
     );
     try {
       const contractData = JSON.parse(fs.readFileSync(contractPath, "utf8"));
@@ -170,14 +170,19 @@ class DraftService {
 
           // Try to decode the event using the contract
           try {
-            // Get the human-readable format which has the correct structure
+            // Get both human-readable and raw formats
             const humanData = event.data.toHuman();
-            const contractAddress = humanData.contract;
-            const hexData = humanData.data;
+            const rawData = event.data.toPrimitive();
+
+            // Try multiple ways to extract contract address and hex data
+            let contractAddress =
+              humanData?.contract || rawData?.[0]?.toString();
+            let hexData = humanData?.data || rawData?.[1]?.toString();
 
             logger.debug("Contract address:", contractAddress);
             logger.debug("Raw hex data:", hexData);
             logger.debug("Full human data:", JSON.stringify(humanData));
+            logger.debug("Raw data:", JSON.stringify(rawData));
 
             // Also try to get raw data directly
             if (!hexData || !contractAddress) {
@@ -220,7 +225,79 @@ class DraftService {
                   logger.debug("Buffer length:", bufferStr.length);
                   logger.debug("Looking for JSON pattern...");
 
-                  // Find the JSON string in the buffer
+                  // Look for JSON pattern in hex directly
+                  const hexBuffer = actualHexData.slice(2); // Remove 0x
+
+                  // Pattern for {"buyer" or similar JSON start
+                  const jsonHexPattern = "7b22"; // hex for '{"'
+                  let jsonHexStart = hexBuffer.indexOf(jsonHexPattern);
+
+                  if (jsonHexStart !== -1) {
+                    logger.debug(
+                      "Found JSON hex pattern at position:",
+                      jsonHexStart
+                    );
+
+                    // Extract from this position to the end and try to find valid JSON
+                    const remainingHex = hexBuffer.substring(jsonHexStart);
+                    const jsonBuffer = Buffer.from(remainingHex, "hex");
+                    const jsonStr = jsonBuffer.toString();
+
+                    logger.debug(
+                      "Potential JSON string:",
+                      jsonStr.substring(0, 200)
+                    );
+
+                    // Find the first complete JSON object
+                    let braceCount = 0;
+                    let jsonEnd = -1;
+                    let jsonStart = jsonStr.indexOf("{");
+
+                    if (jsonStart !== -1) {
+                      for (let i = jsonStart; i < jsonStr.length; i++) {
+                        if (jsonStr[i] === "{") braceCount++;
+                        if (jsonStr[i] === "}") {
+                          braceCount--;
+                          if (braceCount === 0) {
+                            jsonEnd = i + 1;
+                            break;
+                          }
+                        }
+                      }
+
+                      if (jsonEnd !== -1) {
+                        const extractedJson = jsonStr.substring(
+                          jsonStart,
+                          jsonEnd
+                        );
+                        logger.info(
+                          "Successfully extracted template data via hex!"
+                        );
+                        logger.debug("Template JSON:", extractedJson);
+
+                        // Validate it's proper JSON
+                        try {
+                          JSON.parse(extractedJson);
+
+                          // Process the request with extracted data
+                          this.processDraftRequest({
+                            requester:
+                              contractAddress || process.env.CONTRACT_ADDRESS,
+                            request_id: Date.now(),
+                            template_data: extractedJson,
+                            timestamp: Date.now(),
+                          });
+                          return; // Exit early on success
+                        } catch (jsonError) {
+                          logger.debug(
+                            "Invalid JSON, continuing with other methods"
+                          );
+                        }
+                      }
+                    }
+                  }
+
+                  // Find the JSON string in the buffer (fallback method)
                   // Try different patterns to find the JSON
                   let jsonStart = bufferStr.indexOf('{"$class"');
                   if (jsonStart === -1) {
@@ -228,6 +305,12 @@ class DraftService {
                   }
                   if (jsonStart === -1) {
                     jsonStart = bufferStr.indexOf('{"$class"'); // Different escaping
+                  }
+                  if (jsonStart === -1) {
+                    jsonStart = bufferStr.indexOf('{"buyer"'); // Look for buyer field
+                  }
+                  if (jsonStart === -1) {
+                    jsonStart = bufferStr.indexOf('{"'); // Any JSON start
                   }
                   if (jsonStart === -1) {
                     // Look for the hex pattern directly
@@ -528,6 +611,24 @@ class DraftService {
     const app = express();
     const port = process.env.PORT || 3001;
 
+    // Enable CORS for frontend access
+    app.use((req, res, next) => {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.header(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS"
+      );
+      res.header(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      );
+      if (req.method === "OPTIONS") {
+        res.sendStatus(200);
+      } else {
+        next();
+      }
+    });
+
     // Health check endpoint
     app.get("/health", (req, res) => {
       res.json({
@@ -583,26 +684,46 @@ class DraftService {
     // List all generated documents
     app.get("/documents", (req, res) => {
       try {
+        const requestedAddress = req.query.address;
+
         const files = fs
           .readdirSync(this.documentsDir)
           .filter((file) => file.endsWith(".md"))
           .map((file) => {
             const filepath = path.join(this.documentsDir, file);
             const stats = fs.statSync(filepath);
+
+            // Parse filename to extract request info: contract-{requestId}-{timestamp}.md or draft-{requestId}-{timestamp}.md
+            const match = file.match(/^(contract|draft)-(.+)-(\d+)\.md$/);
+            if (!match) return null;
+
+            const [, prefix, requestId, timestamp] = match;
+
             return {
+              id: `${requestId}-${timestamp}`,
+              requestId: requestId,
               filename: file,
-              url: `${process.env.DOCUMENTS_BASE_URL}/${file}`,
+              status: "completed",
+              documentUrl: `${process.env.DOCUMENTS_BASE_URL}/${file}`,
+              createdAt: stats.birthtime.toISOString(),
               size: stats.size,
-              created: stats.birthtime,
-              modified: stats.mtime,
+              // Try to read template data from file metadata or assume it's available
+              templateData: null,
             };
           })
-          .sort((a, b) => b.created - a.created);
+          .filter(Boolean) // Remove null entries
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        res.json({
-          documents: files,
-          count: files.length,
-        });
+        // Filter by address if provided (this is a simplified approach)
+        // In a real application, you'd store the mapping between addresses and requests in a database
+        let filteredFiles = files;
+        if (requestedAddress) {
+          // For now, return all files since we don't have address mapping
+          // You could enhance this by storing request metadata in a JSON file
+          filteredFiles = files;
+        }
+
+        res.json(filteredFiles);
       } catch (error) {
         logger.error("Error listing documents:", error);
         res.status(500).json({ error: "Failed to list documents" });

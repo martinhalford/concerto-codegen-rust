@@ -26,5 +26,4 @@ Goods Value: 1000000
 
 ## Request Draft
 
-{"$class":"io.clause.latedeliveryandpenalty@0.1.0.LateDeliveryAndPenalty","clauseId":"late-delivery-clause-1","forceMajeure":true,"penaltyDuration":{"$class":"org.accordproject.time@0.3.0.Duration","amount":3,"unit":"days"},"penaltyPercentage":12.5,"capPercentage":60,"termination":{"$class":"org.accordproject.time@0.3.0.Duration","amount":20,"unit":"days"},"fractionalPart":"days"}
-
+{"$class":"io.clause.latedeliveryandpenalty@0.1.0.LateDeliveryAndPenalty","clauseId":"test-clause-1","forceMajeure":false,"penaltyDuration":{"$class":"org.accordproject.time@0.3.0.Duration","amount":3,"unit":"days"},"penaltyPercentage":10.5,"capPercentage":55,"termination":{"$class":"org.accordproject.time@0.3.0.Duration","amount":15,"unit":"days"},"fractionalPart":"days"}

@@ -2,6 +2,32 @@
 
 A universal code generator that transforms Concerto model definitions (.cto files) into executable Rust projects with business logic boilerplate. Should work with any valid Concerto model.
 
+## **Quick Demo - Complete Working Integration**
+
+**Want to see it in action?** We have a **complete end-to-end integration** with:
+
+- **ink! Smart Contract** deployed to Substrate
+- **Draft Service** for document generation
+- **React Frontend** with real-time updates
+- **Document Management** via API
+
+**Start the demo:**
+
+```bash
+# Terminal 1: Start Draft Service
+cd draft-service && npm start
+
+# Terminal 2: Start Substrate Node
+cd inkathon && pnpm run node
+
+# Terminal 3: Start Frontend
+cd inkathon/frontend && pnpm run dev
+```
+
+Then open `http://localhost:3000` and request a contract draft!
+
+> ** Full Integration Guide:** See [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) for complete setup instructions.
+
 ## Prerequisites
 
 - **Node.js** (version 16 or higher)
@@ -92,11 +118,29 @@ cargo test                  # Run contract tests
 
 **ink! Features:**
 
-- **✅ Substrate Compatible**: Deploys to any Substrate blockchain with contracts pallet
-- **✅ Storage Management**: Contract state derived from your Concerto models
-- **✅ Event Emission**: Automatic event generation for all contract actions
-- **✅ Access Control**: Owner-based permissions and pausable functionality
-- **✅ Transaction Processing**: Type-safe request/response handling
+- ** Substrate Compatible**: Deploys to any Substrate blockchain with contracts pallet
+- ** Storage Management**: Contract state derived from your Concerto models
+- ** Event Emission**: Automatic event generation for all contract actions
+- ** Access Control**: Owner-based permissions and pausable functionality
+- ** Transaction Processing**: Type-safe request/response handling
+
+## 🌐 **Frontend Integration**
+
+We provide a **complete React frontend** with real-time blockchain integration:
+
+- **React + TypeScript**: Modern, type-safe frontend
+- **Polkadot.js Integration**: Connect any Substrate wallet
+- **Real-time Document Generation**: See contracts created instantly
+- **Document Management**: Download and view generated contracts
+- **Transaction History**: Track all blockchain interactions
+
+**Key Components:**
+
+- `inkathon/frontend/` - React frontend with Tailwind CSS
+- `draft-service/` - Node.js service for document processing
+- `inkathon/contracts/` - Deployed ink! smart contracts
+
+**See [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) for complete setup guide.**
 
 ## Project Structure
 
@@ -115,7 +159,15 @@ concerto-codegen-rust/
 │       ├── logic/                        # Template logic (reference only)
 │       ├── text/                         # Template grammar (reference only)
 │       └── package.json                  # Template metadata
+├── inkathon/                             # Complete Frontend Integration
+│   ├── frontend/                         # React frontend with Polkadot.js
+│   └── contracts/                        # Deployed ink! contracts
+├── draft-service/                        # Document Generation Service
+│   ├── src/index.js                      # Event listener & API server
+│   └── generated-documents/              # Generated contract documents
 ├── output/                               # Generated Rust project ⚡
+├── FRONTEND_INTEGRATION.md               # Complete integration guide
+├── deployment-guide.md                   # Production deployment guide
 ├── package.json                          # Node.js configuration
 └── README.md                             # This file
 ```
@@ -199,43 +251,26 @@ async fn test_logic_trigger() {
 }
 ```
 
-## Development Workflow
+## **Contributing**
 
-### 1. Generate and Test
+We welcome contributions! The project includes:
 
-```bash
-npm run generate   # Generate Rust project from your .cto files
-cd output
-cargo run          # See your models in action with synthetic data
-cargo test         # Run comprehensive test suite
-```
+- **Core Code Generation**: Rust model generation from Concerto
+- **ink! Smart Contracts**: Substrate-compatible blockchain contracts
+- **Frontend Integration**: React + Polkadot.js integration
+- **Document Generation**: Accord Project template processing
+- **Developer Experience**: Documentation, testing, examples
 
-### 2. Implement Business Logic
+## **License**
 
-1. Open `src/logic.rs`
-2. Find the `trigger()` method
-3. Replace TODO markers with your business logic
-4. Run `cargo test` to verify implementation
+Apache License 2.0 - see [LICENSE](LICENSE) for details.
 
-### 3. Use in Production
+## **Related Projects**
 
-Copy the generated project or integrate into your existing Rust codebase:
-
-```toml
-[dependencies]
-serde = { version = "1.0", features = ["derive"] }
-chrono = { version = "0.4", features = ["serde"] }
-serde_json = "1.0"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
-```
-
-## Key Benefits
-
-- **🚀 Zero Setup Time**: Immediately executable output
-- **🔒 Type Safety**: Compile-time guarantees for all model operations
-- **🧪 Test-Driven**: Comprehensive test framework included
-- **📊 Production Ready**: Async-compatible business logic structure
-- **🌍 Universal**: Works with any valid Concerto model from any domain
+- **[Accord Project](https://accordproject.org/)** - Smart legal contract templates
+- **[ink!](https://use.ink/)** - Rust smart contracts for Substrate
+- **[Substrate](https://substrate.io/)** - Blockchain development framework
+- **[Polkadot.js](https://polkadot.js.org/)** - JavaScript library for Polkadot
 
 ---
 

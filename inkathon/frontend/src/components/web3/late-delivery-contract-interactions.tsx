@@ -3,6 +3,7 @@
 import { FC, useEffect, useState } from 'react'
 
 import { ContractIds } from '@/deployments/deployments'
+import { env } from '@/config/environment'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   contractQuery,
@@ -21,6 +22,17 @@ import { Form, FormControl, FormItem, FormLabel } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { contractTxWithToast } from '@/utils/contract-tx-with-toast'
 import { truncateHash } from '@/utils/truncate-hash'
+
+// Types for draft service
+interface GeneratedDocument {
+  id: string
+  requestId: string
+  status: 'processing' | 'completed' | 'error'
+  documentUrl?: string
+  errorMessage?: string
+  createdAt: string
+  templateData?: any
+}
 
 // Form schemas
 const requestDraftSchema = z.object({
@@ -54,11 +66,14 @@ export const LateDeliveryContractInteractions: FC = () => {
   }>({})
 
   const [myDrafts, setMyDrafts] = useState<any[]>([])
+  const [generatedDocuments, setGeneratedDocuments] = useState<GeneratedDocument[]>([])
   const [isLoadingInfo, setIsLoadingInfo] = useState(false)
   const [isLoadingDrafts, setIsLoadingDrafts] = useState(false)
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
   const [processResult, setProcessResult] = useState<{
     penalty?: string
     buyerMayTerminate?: boolean
+    request?: any
   } | null>(null)
   const [transactionHistory, setTransactionHistory] = useState<Array<{
     type: string
@@ -129,6 +144,27 @@ export const LateDeliveryContractInteractions: FC = () => {
     }
   }
 
+  // Fetch generated documents from draft service
+  const fetchGeneratedDocuments = async () => {
+    if (!activeAccount) return
+
+    setIsLoadingDocuments(true)
+    try {
+      const response = await fetch(`${env.draftServiceUrl}/documents?address=${activeAccount.address}`)
+      if (response.ok) {
+        const documents = await response.json()
+        setGeneratedDocuments(documents)
+      } else {
+        console.error('Failed to fetch documents:', response.statusText)
+      }
+    } catch (e) {
+      console.error('Error fetching documents from draft service:', e)
+      // Don't show error toast as this might be expected if service is not running
+    } finally {
+      setIsLoadingDocuments(false)
+    }
+  }
+
   // Request draft
   const handleRequestDraft: SubmitHandler<RequestDraftForm> = async ({ templateData }) => {
     if (!activeAccount || !contract || !activeSigner || !api) {
@@ -146,8 +182,8 @@ export const LateDeliveryContractInteractions: FC = () => {
           templateData,
           txHash: txResult.extrinsicHash?.toString(),
           blockHash: txResult.blockHash?.toString(),
-          blockNumber: txResult.blockNumber?.toString(),
-          success: txResult.isCompleted && !txResult.isError
+          blockNumber: (txResult as any).blockNumber?.toString(),
+          success: (txResult as any).isCompleted && !(txResult as any).isError
         },
         timestamp: new Date()
       }])
@@ -157,6 +193,7 @@ export const LateDeliveryContractInteractions: FC = () => {
       // Refresh drafts after submitting
       setTimeout(() => {
         fetchMyDrafts()
+        fetchGeneratedDocuments() // Also refresh generated documents
       }, 2000) // Wait a bit for the transaction to be processed
 
       toast.success('Draft request submitted successfully!')
@@ -222,12 +259,12 @@ export const LateDeliveryContractInteractions: FC = () => {
 
       console.log('✅ Transaction completed!', {
         duration: `${txDuration}ms`,
-        isCompleted: txResult.isCompleted,
-        isError: txResult.isError,
+        isCompleted: (txResult as any).isCompleted,
+        isError: (txResult as any).isError,
         extrinsicHash: txResult.extrinsicHash,
         blockHash: txResult.blockHash,
-        blockNumber: txResult.blockNumber,
-        errorMessage: txResult.errorMessage,
+        blockNumber: (txResult as any).blockNumber,
+        errorMessage: (txResult as any).errorMessage,
         fullTxResult: txResult
       })
 
@@ -236,22 +273,22 @@ export const LateDeliveryContractInteractions: FC = () => {
       // More robust success detection - transaction succeeded if it completed and has no error
       // Also consider it successful if we got an extrinsic hash (means it was submitted to chain)
       const transactionSucceeded = Boolean(
-        (txResult?.isCompleted === true &&
-          (txResult?.isError === false || txResult?.isError === undefined)) ||
-        (txResult?.extrinsicHash && !txResult?.isError)
+        ((txResult as any)?.isCompleted === true &&
+          ((txResult as any)?.isError === false || (txResult as any)?.isError === undefined)) ||
+        (txResult?.extrinsicHash && !(txResult as any)?.isError)
       )
 
       console.log('🔍 Transaction success check:', {
         transactionSucceeded,
-        isCompleted: txResult?.isCompleted,
-        isError: txResult?.isError,
+        isCompleted: (txResult as any)?.isCompleted,
+        isError: (txResult as any)?.isError,
         txResultExists: !!txResult,
         txResultType: typeof txResult,
         hasHash: !!txResult?.extrinsicHash,
         successCheckBreakdown: {
-          isCompletedTrue: txResult?.isCompleted === true,
-          isErrorFalseOrUndefined: txResult?.isError === false || txResult?.isError === undefined,
-          combinedResult: txResult?.isCompleted === true && (txResult?.isError === false || txResult?.isError === undefined)
+          isCompletedTrue: (txResult as any)?.isCompleted === true,
+          isErrorFalseOrUndefined: (txResult as any)?.isError === false || (txResult as any)?.isError === undefined,
+          combinedResult: (txResult as any)?.isCompleted === true && ((txResult as any)?.isError === false || (txResult as any)?.isError === undefined)
         }
       })
 
@@ -351,9 +388,9 @@ export const LateDeliveryContractInteractions: FC = () => {
         }
       } else {
         console.log('❌ Transaction failed, skipping result query:', {
-          isCompleted: txResult.isCompleted,
-          isError: txResult.isError,
-          errorMessage: txResult.errorMessage
+          isCompleted: (txResult as any).isCompleted,
+          isError: (txResult as any).isError,
+          errorMessage: (txResult as any).errorMessage
         })
       }
 
@@ -377,7 +414,7 @@ export const LateDeliveryContractInteractions: FC = () => {
           buyerMayTerminate: actualResult?.buyerMayTerminate || false,
           txHash: txResult.extrinsicHash?.toString(),
           blockHash: txResult.blockHash?.toString(),
-          blockNumber: txResult.blockNumber?.toString(),
+          blockNumber: (txResult as any).blockNumber?.toString(),
           success: transactionSucceeded, // Transaction success, regardless of result query
           resultObtained: actualResult !== null
         },
@@ -467,8 +504,20 @@ export const LateDeliveryContractInteractions: FC = () => {
     if (contract) {
       fetchContractInfo()
       fetchMyDrafts()
+      fetchGeneratedDocuments()
     }
   }, [contract, activeAccount])
+
+  // Periodically check for new documents
+  useEffect(() => {
+    if (!activeAccount) return
+
+    const interval = setInterval(() => {
+      fetchGeneratedDocuments()
+    }, 10000) // Check every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [activeAccount])
 
   if (!api) return null
 
@@ -487,7 +536,7 @@ export const LateDeliveryContractInteractions: FC = () => {
               <div className="flex justify-between">
                 <span>Address:</span>
                 <span className="font-mono text-xs">
-                  {contract ? truncateHash(contractAddress, 8) : 'Loading…'}
+                  {contract ? truncateHash(contractAddress?.toString() || '', 8) : 'Loading…'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -724,6 +773,104 @@ export const LateDeliveryContractInteractions: FC = () => {
                 </div>
               ) : (
                 <p className="text-gray-500">No drafts found</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Generated Documents */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-base">Generated Documents</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchGeneratedDocuments}
+                  disabled={isLoadingDocuments}
+                  isLoading={isLoadingDocuments}
+                >
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingDocuments ? (
+                <p className="text-gray-500">Loading documents...</p>
+              ) : generatedDocuments.length > 0 ? (
+                <div className="space-y-3">
+                  {generatedDocuments.map((document, index) => (
+                    <div key={document.id || index} className="p-4 border rounded-lg bg-gray-50">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Contract Draft #{document.requestId}</h4>
+                          <p className="text-xs text-gray-500">ID: {document.id}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-1 rounded font-medium ${document.status === 'completed'
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : document.status === 'processing'
+                              ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                              : 'bg-red-100 text-red-800 border border-red-200'
+                            }`}>
+                            {document.status === 'completed' ? '✓ Completed' :
+                              document.status === 'processing' ? '⏳ Processing' : '✗ Error'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Document Details */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Created:</span>
+                          <span className="font-mono text-xs text-gray-800">
+                            {new Date(document.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+
+                        {document.status === 'completed' && document.documentUrl && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Document:</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(document.documentUrl, '_blank')}
+                              className="h-6 px-2 text-xs"
+                            >
+                              📄 View/Download
+                            </Button>
+                          </div>
+                        )}
+
+                        {document.status === 'error' && document.errorMessage && (
+                          <div className="text-sm">
+                            <span className="text-gray-600">Error:</span>
+                            <p className="text-red-600 text-xs mt-1 p-2 bg-red-50 rounded border border-red-100">
+                              {document.errorMessage}
+                            </p>
+                          </div>
+                        )}
+
+                        {document.templateData && (
+                          <details className="text-xs">
+                            <summary className="text-gray-600 cursor-pointer hover:text-gray-800">
+                              Template Data
+                            </summary>
+                            <pre className="mt-2 p-2 bg-white rounded border text-gray-700 overflow-x-auto">
+                              {JSON.stringify(document.templateData, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-2">No generated documents found</p>
+                  <p className="text-xs text-gray-400">
+                    Documents will appear here after you request a draft and the service processes it
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>

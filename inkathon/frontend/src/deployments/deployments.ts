@@ -7,7 +7,6 @@ import { env } from '@/config/environment'
  * DOCS: https://github.com/scio-labs/inkathon#2-custom-contracts
  */
 export enum ContractIds {
-  Greeter = 'greeter',
   LateDeliveryAndPenalty = 'late-delivery-and-penalty',
 }
 
@@ -17,9 +16,9 @@ export const getDeployments = async (): Promise<SubstrateDeployment[]> => {
 
   for (const networkId of networks) {
     for (const contractId of Object.values(ContractIds)) {
-      const abi = await import(`../../../contracts/deployments/${contractId}/${contractId}.json`)
+      const abi = await import(`../../../contracts/${contractId}/deployments/${contractId}.json`)
       const { address } = await import(
-        `../../../contracts/deployments/${contractId}/${networkId}.ts`
+        `../../../contracts/${contractId}/deployments/${networkId}.ts`
       )
 
       deployments.push({ contractId, networkId, abi, address })

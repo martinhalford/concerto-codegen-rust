@@ -1,6 +1,17 @@
 # LateDeliveryAndPenalty - ink! Smart Contract
 
-This ink! smart contract was generated from Concerto models and implements a blockchain-based legal contract.
+This ink! smart contract was generated from Concerto models and implements a blockchain-based legal contract with **complete frontend integration**.
+
+## **Working Integration**
+
+This contract is part of a **complete end-to-end system** featuring:
+
+- **React Frontend** with Polkadot.js integration
+- **Real-time Document Generation** via draft service
+- **Event-driven Architecture** for automatic processing
+- **Accord Project Template Processing** for legal documents
+
+**Live Demo**: Start the frontend (`cd ../../frontend && pnpm run dev`) and see contracts generated in real-time!
 
 ## Overview
 
@@ -13,14 +24,22 @@ This contract implements the **LateDeliveryAndPenalty** template model with the 
 - **termination**: Duration
 - **fractionalPart**: TemporalUnit
 
+## **Frontend Integration Features**
+
+- **Draft Requests**: Submit contract generation requests via React UI
+- **Real-time Updates**: See document status updates automatically
+- **Document Downloads**: Access generated contracts immediately
+- **Transaction History**: Track all blockchain interactions
+- **Wallet Integration**: Connect with any Polkadot.js compatible wallet
 
 ## Contract Features
 
 - **Pausable**: Contract can be paused/unpaused by the owner
 - **Access Control**: Owner-based permissions
-- **Event Emission**: All important actions emit events
+- **Event Emission**: All important actions emit events for frontend integration
 - **Request Processing**: Handles LateDeliveryAndPenaltyRequest requests
 - **Response Generation**: Generates LateDeliveryAndPenaltyResponse responses
+- **Draft Document Coordination**: Manages document generation workflow
 
 ## Building and Testing
 
@@ -80,6 +99,7 @@ cargo test
 ## Generated from Concerto Models
 
 This contract was automatically generated from the following Concerto model files:
+
 - io.clause.latedeliveryandpenalty@0.1.0.LateDeliveryAndPenalty
 
 ## License
