@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormItem, FormLabel } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { contractTxWithToast } from '@/utils/contract-tx-with-toast'
+import { truncateHash } from '@/utils/truncate-hash'
 
 // Form schemas
 const requestDraftSchema = z.object({
@@ -484,6 +485,12 @@ export const LateDeliveryContractInteractions: FC = () => {
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
+                <span>Address:</span>
+                <span className="font-mono text-xs">
+                  {contract ? truncateHash(contractAddress, 8) : 'Loading…'}
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span>Status:</span>
                 <span className={contractInfo.isPaused ? 'text-red-500' : 'text-green-500'}>
                   {isLoadingInfo ? 'Loading...' : contractInfo.isPaused ? 'Paused' : 'Active'}
@@ -828,11 +835,6 @@ export const LateDeliveryContractInteractions: FC = () => {
             </Card>
           )}
         </div>
-
-        {/* Contract Address */}
-        <p className="text-center font-mono text-xs text-gray-600">
-          {contract ? contractAddress : 'Loading…'}
-        </p>
       </div>
     </>
   )
