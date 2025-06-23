@@ -20,18 +20,16 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="container relative flex grow flex-col items-center justify-center py-10">
-        {/* Title */}
-        <HomePageTitle />
+      <div className="container relative flex grow flex-col py-10">
+        {/* Top Bar with Title and Wallet */}
+        <div className="flex items-center justify-between mb-8">
+          <HomePageTitle />
+          <ConnectButton />
+        </div>
 
-        {/* Connect Wallet Button */}
-        <ConnectButton />
-
-        <div className="mt-12 flex w-full flex-col items-start justify-center gap-6 max-w-6xl">
-          {/* Chain Metadata Information */}
-          <div className="w-full flex justify-center">
-            <ChainInfo />
-          </div>
+        <div className="flex w-full flex-col gap-6 max-w-6xl mx-auto">
+          {/* Chain Metadata Information - Full Width Status Bar */}
+          <ChainInfo />
 
           {/* Contract Interactions */}
           <div className="w-full flex justify-center">

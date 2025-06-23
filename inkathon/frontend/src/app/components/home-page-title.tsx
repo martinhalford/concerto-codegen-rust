@@ -32,13 +32,10 @@ export const HomePageTitle: FC = () => {
 
   return (
     <>
-      <div className="flex flex-col items-center text-center font-mono">
-          <h1 className="text-[2.5rem] font-black tracking-tighter">{title}</h1>
-
-        {/* Tagline & Lincks */}
-        <p className="mb-2 mt-4 text-gray-400">{desc}</p>
-
-        <div className="my-14 h-[1px] w-[5rem] max-w-full bg-gray-800" />
+      <div className="flex flex-col items-start text-left font-mono">
+        <h1 className="text-[2rem] font-black tracking-tighter">{title}</h1>
+        {/* Tagline */}
+        <p className="mt-2 text-gray-400 text-sm">{desc}</p>
       </div>
     </>
   )

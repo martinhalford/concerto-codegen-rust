@@ -49,65 +49,73 @@ export const ChainInfo: FC = () => {
 
   return (
     <>
-      <div className="flex max-w-[22rem] grow flex-col gap-4">
-        <h2 className="text-center font-mono text-gray-400">Chain Info</h2>
-
-        <Card>
-          <CardContent className="pb-3 pt-6">
-            {/* Metadata */}
-            {Object.entries(chainInfo || {}).map(([key, value]) => (
-              <div key={key} className="text-sm leading-7">
-                {key}:
-                <strong className="float-right ml-6 max-w-[15rem] truncate" title={value}>
-                  {value}
-                </strong>
+      <div className="w-full">
+        {/* Horizontal Status Bar */}
+        <Card className="w-full">
+          <CardContent className="px-6 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
+              {/* Chain Info Section */}
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="font-mono text-gray-400">Chain Info:</div>
+                {Object.entries(chainInfo || {}).map(([key, value]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="text-gray-400">{key}:</span>
+                    <strong className="font-mono" title={value}>
+                      {value}
+                    </strong>
+                  </div>
+                ))}
               </div>
-            ))}
+
+              {/* Links Section */}
+              <div className="flex items-center gap-4">
+                {/* Explorer Link */}
+                {!!activeChain?.explorerUrls && !!Object.keys(activeChain.explorerUrls)?.length && (
+                  <Link
+                    href={Object.values(activeChain.explorerUrls)[0]}
+                    target="_blank"
+                    className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors"
+                  >
+                    Explorer <HiOutlineExternalLink />
+                  </Link>
+                )}
+                {/* Faucet Link */}
+                {!!activeChain?.faucetUrls?.length && (
+                  <Link
+                    href={activeChain.faucetUrls[0]}
+                    target="_blank"
+                    className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors"
+                  >
+                    Faucet <HiOutlineExternalLink />
+                  </Link>
+                )}
+                {/* Contracts UI Link */}
+                {!!activeChain?.rpcUrls?.length && (
+                  <Link
+                    href={`https://contracts-ui.substrate.io/?rpc=${activeChain.rpcUrls[0]}`}
+                    target="_blank"
+                    className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors"
+                  >
+                    Contracts UI <HiOutlineExternalLink />
+                  </Link>
+                )}
+              </div>
+            </div>
           </CardContent>
-          <CardFooter className="flex items-center justify-center space-x-3">
-            {/* Explorer Link */}
-            {!!activeChain?.explorerUrls && !!Object.keys(activeChain.explorerUrls)?.length && (
-              <Link
-                href={Object.values(activeChain.explorerUrls)[0]}
-                target="_blank"
-                className="flex items-center justify-center gap-1 text-center text-sm text-gray-400 hover:text-white"
-              >
-                Explorer <HiOutlineExternalLink />
-              </Link>
-            )}
-            {/* Faucet Link */}
-            {!!activeChain?.faucetUrls?.length && (
-              <Link
-                href={activeChain.faucetUrls[0]}
-                target="_blank"
-                className="flex items-center justify-center gap-1 text-center text-sm text-gray-400 hover:text-white"
-              >
-                Faucet <HiOutlineExternalLink />
-              </Link>
-            )}
-            {/* Contracts UI Link */}
-            {!!activeChain?.rpcUrls?.length && (
-              <Link
-                href={`https://contracts-ui.substrate.io/?rpc=${activeChain.rpcUrls[0]}`}
-                target="_blank"
-                className="flex items-center justify-center gap-1 text-center text-sm text-gray-400 hover:text-white"
-              >
-                Contracts UI <HiOutlineExternalLink />
-              </Link>
-            )}
-          </CardFooter>
         </Card>
 
         {/* Mainnet Security Disclaimer */}
         {!activeChain?.testnet && (
-          <>
-            <h2 className="text-center font-mono text-red-400">Security Disclaimer</h2>
-
-            <Card className="border-red-300 bg-red-500 p-2 shadow-md">
-              You are interacting with un-audited mainnet contracts and risk all your funds. Never
-              transfer tokens to this contract.
-            </Card>
-          </>
+          <Card className="mt-3 border-red-300 bg-red-500/10 border-red-500/20">
+            <CardContent className="px-6 py-3">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-mono text-red-400">Security Disclaimer:</span>
+                <span className="text-red-300">
+                  You are interacting with un-audited mainnet contracts and risk all your funds. Never transfer tokens to this contract.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </>
