@@ -157,3 +157,6 @@ dist
 
 # System files
 .DS_Store
+
+# Draft service generated documents
+draft-service/generated-documents/
