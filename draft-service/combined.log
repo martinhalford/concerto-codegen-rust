@@ -656,3 +656,230 @@
 {"level":"info","message":"Draft result submitted for request 1750792908036: 0x88fff34916d446eded33a307a541b959c7ca85c0cfa877a72b93bc63f1053b88","timestamp":"2025-06-24T19:21:54.044Z"}
 {"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:22:00.021Z"}
 {"level":"info","message":"Draft result finalized for request 1750792908036: 0x88fff34916d446eded33a307a541b959c7ca85c0cfa877a72b93bc63f1053b88","timestamp":"2025-06-24T19:22:07.745Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:39:36.027Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:39:36.027Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:39:36.027Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f1500f0000000000000031067b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a332c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31302e352c2263617050657263656e74616765223a35352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31352c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973222c225f6f7574707574466f726d6174223a226d64227dc6f873a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:39:36.027Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:39:36.027Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Original template data:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Cleaned template data:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Requested format:","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"info","message":"Processing draft request 1750793976028 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: md)","timestamp":"2025-06-24T19:39:36.028Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:39:36.058Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:39:36.058Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:39:36.058Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:39:36.058Z"}
+{"level":"info","message":"Markdown generated and saved to: generated-documents/contract-1750793976028-1750793976786.md","timestamp":"2025-06-24T19:39:36.787Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750793976028-1750793976786.md","timestamp":"2025-06-24T19:39:36.787Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:39:42.032Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:39:42.033Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:39:42.033Z"}
+{"level":"info","message":"Draft result submitted for request 1750793976028: 0x316d997c8628933127bc3487ee7b456b6526987f4155f6bb48288630092da97b","timestamp":"2025-06-24T19:39:42.043Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:39:48.025Z"}
+{"level":"info","message":"Draft result finalized for request 1750793976028: 0x316d997c8628933127bc3487ee7b456b6526987f4155f6bb48288630092da97b","timestamp":"2025-06-24T19:39:54.847Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:40:06.028Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:40:06.028Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:40:06.028Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f150100000000000000035067b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a332c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31302e352c2263617050657263656e74616765223a35352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31352c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973222c225f6f7574707574466f726d6174223a22706466227df46d74a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:40:06.031Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:40:06.033Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:40:06.033Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:40:06.034Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:40:06.034Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:40:06.034Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:40:06.034Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:40:06.034Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:40:06.034Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:40:06.034Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:40:06.034Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:40:06.034Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:40:06.035Z"}
+{"level":"debug","message":"Original template data:","timestamp":"2025-06-24T19:40:06.035Z"}
+{"level":"debug","message":"Cleaned template data:","timestamp":"2025-06-24T19:40:06.035Z"}
+{"level":"debug","message":"Requested format:","timestamp":"2025-06-24T19:40:06.035Z"}
+{"level":"info","message":"Processing draft request 1750794006035 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: pdf)","timestamp":"2025-06-24T19:40:06.035Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:40:06.065Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:40:06.065Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:40:06.065Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:40:06.065Z"}
+{"level":"info","message":"Converting markdown to PDF...","timestamp":"2025-06-24T19:40:06.651Z"}
+{"level":"info","message":"PDF generated and saved to: generated-documents/contract-1750794006035-1750794006651.pdf","timestamp":"2025-06-24T19:40:10.660Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750794006035-1750794006651.pdf","timestamp":"2025-06-24T19:40:10.660Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:40:12.038Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:40:12.038Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:40:12.039Z"}
+{"level":"info","message":"Draft result submitted for request 1750794006035: 0x2391fe20e04e65ac7f5b85b5e1024e61984ee0abc922b98380fce235edb84069","timestamp":"2025-06-24T19:40:12.045Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:40:18.021Z"}
+{"level":"info","message":"Draft result finalized for request 1750794006035: 0x2391fe20e04e65ac7f5b85b5e1024e61984ee0abc922b98380fce235edb84069","timestamp":"2025-06-24T19:40:25.692Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:41:12.026Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:41:12.027Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:41:12.027Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f15011000000000000002d067b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a352c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31352c2263617050657263656e74616765223a35352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31302c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a227765656b73222c225f6f7574707574466f726d6174223a226d64227dc06f75a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:41:12.027Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:41:12.028Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:41:12.028Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:41:12.028Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"debug","message":"Original template data:","timestamp":"2025-06-24T19:41:12.029Z"}
+{"level":"debug","message":"Cleaned template data:","timestamp":"2025-06-24T19:41:12.030Z"}
+{"level":"debug","message":"Requested format:","timestamp":"2025-06-24T19:41:12.030Z"}
+{"level":"info","message":"Processing draft request 1750794072029 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: md)","timestamp":"2025-06-24T19:41:12.030Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:41:12.059Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:41:12.059Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:41:12.059Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:41:12.059Z"}
+{"level":"info","message":"Markdown generated and saved to: generated-documents/contract-1750794072029-1750794072642.md","timestamp":"2025-06-24T19:41:12.642Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750794072029-1750794072642.md","timestamp":"2025-06-24T19:41:12.643Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:41:18.018Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:41:18.018Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:41:18.018Z"}
+{"level":"info","message":"Draft result submitted for request 1750794072029: 0x7a593b15083b39c07d172a61a9d26615c487949bd46815ae208e5b29364cd542","timestamp":"2025-06-24T19:41:18.034Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:41:24.010Z"}
+{"level":"info","message":"Draft result finalized for request 1750794072029: 0x7a593b15083b39c07d172a61a9d26615c487949bd46815ae208e5b29364cd542","timestamp":"2025-06-24T19:41:31.454Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:42:06.027Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:42:06.028Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:42:06.028Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f15012000000000000002d067b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a352c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31352c2263617050657263656e74616765223a36302c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31352c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973222c225f6f7574707574466f726d6174223a22706466227db74276a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:42:06.029Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:42:06.031Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:42:06.032Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:42:06.032Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:42:06.032Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:42:06.032Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:42:06.032Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:42:06.032Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:42:06.033Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:42:06.033Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:42:06.034Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:42:06.034Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:42:06.034Z"}
+{"level":"debug","message":"Original template data:","timestamp":"2025-06-24T19:42:06.034Z"}
+{"level":"debug","message":"Cleaned template data:","timestamp":"2025-06-24T19:42:06.034Z"}
+{"level":"debug","message":"Requested format:","timestamp":"2025-06-24T19:42:06.034Z"}
+{"level":"info","message":"Processing draft request 1750794126034 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: pdf)","timestamp":"2025-06-24T19:42:06.035Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:42:06.068Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:42:06.068Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:42:06.068Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:42:06.068Z"}
+{"level":"info","message":"Converting markdown to PDF...","timestamp":"2025-06-24T19:42:06.663Z"}
+{"level":"info","message":"PDF generated and saved to: generated-documents/contract-1750794126034-1750794126663.pdf","timestamp":"2025-06-24T19:42:10.861Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750794126034-1750794126663.pdf","timestamp":"2025-06-24T19:42:10.861Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:42:12.033Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:42:12.033Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:42:12.033Z"}
+{"level":"info","message":"Draft result submitted for request 1750794126034: 0xe5e39c1f12a9782c319e58765805171fa94a37517acb783e9f45a5e2e78c508c","timestamp":"2025-06-24T19:42:12.047Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:42:18.024Z"}
+{"level":"info","message":"Draft result finalized for request 1750794126034: 0xe5e39c1f12a9782c319e58765805171fa94a37517acb783e9f45a5e2e78c508c","timestamp":"2025-06-24T19:42:25.105Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:45:54.035Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:45:54.035Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:45:54.035Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f150130000000000000021067b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a747275652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a312c22756e6974223a227765656b73227d2c2270656e616c747950657263656e74616765223a322c2263617050657263656e74616765223a332c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a342c22756e6974223a227765656b73227d2c226672616374696f6e616c50617274223a2264617973222c225f6f7574707574466f726d6174223a226d64227d55bd79a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:45:54.036Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:45:54.036Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:45:54.036Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:45:54.036Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:45:54.036Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:45:54.036Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:45:54.036Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:45:54.036Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:45:54.037Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:45:54.037Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:45:54.037Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:45:54.037Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:45:54.037Z"}
+{"level":"debug","message":"Original template data:","timestamp":"2025-06-24T19:45:54.037Z"}
+{"level":"debug","message":"Cleaned template data:","timestamp":"2025-06-24T19:45:54.037Z"}
+{"level":"debug","message":"Requested format:","timestamp":"2025-06-24T19:45:54.037Z"}
+{"level":"info","message":"Processing draft request 1750794354037 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: md)","timestamp":"2025-06-24T19:45:54.037Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:45:54.071Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:45:54.072Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:45:54.072Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:45:54.072Z"}
+{"level":"info","message":"Markdown generated and saved to: generated-documents/contract-1750794354037-1750794354629.md","timestamp":"2025-06-24T19:45:54.629Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750794354037-1750794354629.md","timestamp":"2025-06-24T19:45:54.629Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:46:00.024Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:46:00.024Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:46:00.024Z"}
+{"level":"info","message":"Draft result submitted for request 1750794354037: 0x7cc0f9eda2b4fe7f799477eab5d2274a0719d16352bfb4ad60cf0ed1662606bc","timestamp":"2025-06-24T19:46:00.030Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:46:06.020Z"}
+{"level":"info","message":"Draft result finalized for request 1750794354037: 0x7cc0f9eda2b4fe7f799477eab5d2274a0719d16352bfb4ad60cf0ed1662606bc","timestamp":"2025-06-24T19:46:13.080Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:46:42.028Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:46:42.029Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:46:42.029Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f150140000000000000021067b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a332c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a342c2263617050657263656e74616765223a352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a362c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973222c225f6f7574707574466f726d6174223a22706466227dd5787aa397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:46:42.030Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:46:42.030Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:46:42.030Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:46:42.030Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:46:42.030Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:46:42.031Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:46:42.031Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:46:42.031Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:46:42.031Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:46:42.031Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:46:42.031Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:46:42.031Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:46:42.031Z"}
+{"level":"debug","message":"Original template data:","timestamp":"2025-06-24T19:46:42.031Z"}
+{"level":"debug","message":"Cleaned template data:","timestamp":"2025-06-24T19:46:42.032Z"}
+{"level":"debug","message":"Requested format:","timestamp":"2025-06-24T19:46:42.032Z"}
+{"level":"info","message":"Processing draft request 1750794402031 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: pdf)","timestamp":"2025-06-24T19:46:42.032Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:46:42.063Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:46:42.063Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:46:42.063Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:46:42.063Z"}
+{"level":"info","message":"Converting markdown to PDF...","timestamp":"2025-06-24T19:46:42.672Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:46:48.023Z"}
+{"level":"info","message":"PDF generated and saved to: generated-documents/contract-1750794402031-1750794402672.pdf","timestamp":"2025-06-24T19:46:49.517Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750794402031-1750794402672.pdf","timestamp":"2025-06-24T19:46:49.517Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:46:54.020Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:46:54.020Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:46:54.020Z"}
+{"level":"info","message":"Draft result submitted for request 1750794402031: 0xfc6ec6e066218b3db127516a7488cc60e6859ac70dcaf61a33cc7c43a16534e1","timestamp":"2025-06-24T19:46:54.032Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:47:00.018Z"}
+{"level":"info","message":"Draft result finalized for request 1750794402031: 0xfc6ec6e066218b3db127516a7488cc60e6859ac70dcaf61a33cc7c43a16534e1","timestamp":"2025-06-24T19:47:06.702Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:50:18.033Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f1509323000000000000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"JSON start position:","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"warn","message":"Could not find JSON in hex data","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:50:18.033Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0x932300000000000001","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:50:18.033Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"JSON start position:","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"warn","message":"Could not find JSON in hex data","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:50:18.034Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:50:24.021Z"}

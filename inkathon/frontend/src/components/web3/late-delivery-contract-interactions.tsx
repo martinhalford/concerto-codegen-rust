@@ -18,8 +18,12 @@ import * as z from 'zod'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormItem, FormLabel } from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
 import { contractTxWithToast } from '@/utils/contract-tx-with-toast'
 import { truncateHash } from '@/utils/truncate-hash'
 
@@ -37,7 +41,15 @@ interface GeneratedDocument {
 
 // Form schemas
 const requestDraftSchema = z.object({
-  templateData: z.string().min(1, 'Template data is required'),
+  clauseId: z.string().min(1, 'Clause ID is required'),
+  forceMajeure: z.boolean().default(false),
+  penaltyAmount: z.number().min(1, 'Penalty duration must be at least 1'),
+  penaltyUnit: z.enum(['days', 'weeks', 'months']).default('days'),
+  penaltyPercentage: z.number().min(0.1).max(100, 'Penalty percentage must be between 0.1% and 100%'),
+  capPercentage: z.number().min(0.1).max(100, 'Cap percentage must be between 0.1% and 100%'),
+  terminationAmount: z.number().min(1, 'Termination period must be at least 1'),
+  terminationUnit: z.enum(['days', 'weeks', 'months']).default('days'),
+  fractionalPart: z.enum(['days', 'weeks', 'months']).default('days'),
   outputFormat: z.enum(['md', 'pdf']).default('md'),
 })
 
@@ -86,10 +98,28 @@ export const LateDeliveryContractInteractions: FC = () => {
   // Forms
   const requestDraftForm = useForm<RequestDraftForm>({
     resolver: zodResolver(requestDraftSchema),
+    defaultValues: {
+      clauseId: 'test-clause-1',
+      forceMajeure: false,
+      penaltyAmount: 3,
+      penaltyUnit: 'days',
+      penaltyPercentage: 10.5,
+      capPercentage: 55,
+      terminationAmount: 15,
+      terminationUnit: 'days',
+      fractionalPart: 'days',
+      outputFormat: 'md',
+    },
   })
 
   const processRequestForm = useForm<ProcessRequestForm>({
     resolver: zodResolver(processRequestSchema),
+    defaultValues: {
+      forceMajeure: false,
+      agreedDelivery: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16), // 7 days ago
+      deliveredAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16), // 5 days ago (2 days late)
+      goodsValue: '1000000',
+    },
   })
 
   // Fetch contract information
@@ -168,18 +198,46 @@ export const LateDeliveryContractInteractions: FC = () => {
   }
 
   // Request draft
-  const handleRequestDraft: SubmitHandler<RequestDraftForm> = async ({ templateData, outputFormat }) => {
+  const handleRequestDraft: SubmitHandler<RequestDraftForm> = async ({
+    clauseId,
+    forceMajeure,
+    penaltyAmount,
+    penaltyUnit,
+    penaltyPercentage,
+    capPercentage,
+    terminationAmount,
+    terminationUnit,
+    fractionalPart,
+    outputFormat
+  }) => {
     if (!activeAccount || !contract || !activeSigner || !api) {
       toast.error('Wallet not connected. Try again…')
       return
     }
 
     try {
-      // Create enhanced template data with format preference
-      const enhancedTemplateData = JSON.stringify({
-        ...JSON.parse(templateData),
-        _outputFormat: outputFormat
-      })
+      // Construct the template data JSON from form fields
+      const templateData = {
+        "$class": "io.clause.latedeliveryandpenalty@0.1.0.LateDeliveryAndPenalty",
+        "clauseId": clauseId,
+        "forceMajeure": forceMajeure,
+        "penaltyDuration": {
+          "$class": "org.accordproject.time@0.3.0.Duration",
+          "amount": penaltyAmount,
+          "unit": penaltyUnit
+        },
+        "penaltyPercentage": penaltyPercentage,
+        "capPercentage": capPercentage,
+        "termination": {
+          "$class": "org.accordproject.time@0.3.0.Duration",
+          "amount": terminationAmount,
+          "unit": terminationUnit
+        },
+        "fractionalPart": fractionalPart,
+        "_outputFormat": outputFormat
+      }
+
+      const enhancedTemplateData = JSON.stringify(templateData)
 
       const txResult = await contractTxWithToast(api, activeAccount.address, contract, 'request_draft', {}, [enhancedTemplateData])
 
@@ -595,71 +653,6 @@ export const LateDeliveryContractInteractions: FC = () => {
             </Card>
           )}
 
-          {/* Request Draft */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Request Draft</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...requestDraftForm}>
-                <form
-                  onSubmit={requestDraftForm.handleSubmit(handleRequestDraft)}
-                  className="space-y-4"
-                >
-                  <FormItem>
-                    <FormLabel>Template Data (JSON)</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder='{"buyer": "Alice", "seller": "Bob", ...}'
-                        {...requestDraftForm.register('templateData')}
-                        disabled={requestDraftForm.formState.isSubmitting}
-                      />
-                    </FormControl>
-                  </FormItem>
-
-                  <FormItem>
-                    <FormLabel>Output Format</FormLabel>
-                    <FormControl>
-                      <div className="flex space-x-4">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            value="md"
-                            {...requestDraftForm.register('outputFormat')}
-                            disabled={requestDraftForm.formState.isSubmitting}
-                            defaultChecked
-                          />
-                          <span className="text-sm">Markdown (.md)</span>
-                        </label>
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            value="pdf"
-                            {...requestDraftForm.register('outputFormat')}
-                            disabled={requestDraftForm.formState.isSubmitting}
-                          />
-                          <span className="text-sm">PDF (.pdf)</span>
-                        </label>
-                      </div>
-                    </FormControl>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Choose the format for your generated contract document
-                    </p>
-                  </FormItem>
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={requestDraftForm.formState.isSubmitting}
-                    isLoading={requestDraftForm.formState.isSubmitting}
-                  >
-                    Request Draft
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-
           {/* Process Request */}
           <Card>
             <CardHeader>
@@ -727,6 +720,274 @@ export const LateDeliveryContractInteractions: FC = () => {
                     isLoading={processRequestForm.formState.isSubmitting}
                   >
                     Process Request
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+
+          {/* Request Draft */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Request Draft</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Form {...requestDraftForm}>
+                <form
+                  onSubmit={requestDraftForm.handleSubmit(handleRequestDraft)}
+                  className="space-y-4"
+                >
+                  {/* Basic Information */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-800 border-b pb-1">Basic Information</h4>
+
+                    <FormField
+                      control={requestDraftForm.control}
+                      name="clauseId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Clause ID</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., test-clause-1"
+                              {...field}
+                              disabled={requestDraftForm.formState.isSubmitting}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        {...requestDraftForm.register('forceMajeure')}
+                        disabled={requestDraftForm.formState.isSubmitting}
+                      />
+                      <FormLabel>Force Majeure</FormLabel>
+                    </div>
+                  </div>
+
+                  {/* Penalty Terms */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-800 border-b pb-1">Penalty Terms</h4>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={requestDraftForm.control}
+                        name="penaltyAmount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Penalty Duration</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="1"
+                                placeholder="3"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                disabled={requestDraftForm.formState.isSubmitting}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={requestDraftForm.control}
+                        name="penaltyUnit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Unit</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger disabled={requestDraftForm.formState.isSubmitting}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="days">Days</SelectItem>
+                                <SelectItem value="weeks">Weeks</SelectItem>
+                                <SelectItem value="months">Months</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={requestDraftForm.control}
+                        name="penaltyPercentage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Penalty Percentage (%)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.1"
+                                min="0.1"
+                                max="100"
+                                placeholder="10.5"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                disabled={requestDraftForm.formState.isSubmitting}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={requestDraftForm.control}
+                        name="capPercentage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Cap Percentage (%)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.1"
+                                min="0.1"
+                                max="100"
+                                placeholder="55"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                disabled={requestDraftForm.formState.isSubmitting}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Termination Terms */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-800 border-b pb-1">Termination Terms</h4>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={requestDraftForm.control}
+                        name="terminationAmount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Termination Period</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="1"
+                                placeholder="15"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                disabled={requestDraftForm.formState.isSubmitting}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={requestDraftForm.control}
+                        name="terminationUnit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Unit</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger disabled={requestDraftForm.formState.isSubmitting}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="days">Days</SelectItem>
+                                <SelectItem value="weeks">Weeks</SelectItem>
+                                <SelectItem value="months">Months</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={requestDraftForm.control}
+                      name="fractionalPart"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fractional Part</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger disabled={requestDraftForm.formState.isSubmitting}>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="days">Days</SelectItem>
+                              <SelectItem value="weeks">Weeks</SelectItem>
+                              <SelectItem value="months">Months</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Time unit for fractional calculations
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Output Format */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-800 border-b pb-1">Output Options</h4>
+
+                    <FormField
+                      control={requestDraftForm.control}
+                      name="outputFormat"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Output Format</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="flex space-x-6"
+                              disabled={requestDraftForm.formState.isSubmitting}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="md" id="md" />
+                                <Label htmlFor="md">Markdown</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="pdf" id="pdf" />
+                                <Label htmlFor="pdf">PDF</Label>
+                              </div>
+                            </RadioGroup>
+                          </FormControl>
+                          <p className="text-xs text-gray-500">
+                            Choose the format for your generated contract document
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={requestDraftForm.formState.isSubmitting}
+                    isLoading={requestDraftForm.formState.isSubmitting}
+                  >
+                    Request Draft
                   </Button>
                 </form>
               </Form>
