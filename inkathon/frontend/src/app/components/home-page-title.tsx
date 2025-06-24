@@ -27,7 +27,7 @@ const StyledIconLink: React.FC<StyledIconLinkProps> = ({ className, children, ..
 )
 
 export const HomePageTitle: FC = () => {
-  const title = 'Accord Project Test App'
+  const title = 'Substrate Smart Contract Test App'
   const desc = 'Test Accord Project Smart Legal Contracts deployed to Substrate.'
 
   return (

@@ -161,5 +161,8 @@ dist
 # Draft service generated documents
 draft-service/generated-documents/
 
+# Draft service log files
+draft-service/logs/
+
 # Generated Rust code output
 output/

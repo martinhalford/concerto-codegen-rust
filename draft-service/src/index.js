@@ -21,8 +21,13 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   transports: [
-    new winston.transports.File({ filename: "error.log", level: "error" }),
-    new winston.transports.File({ filename: "combined.log" }),
+    new winston.transports.File({
+      filename: path.join(__dirname, "../logs/error.log"),
+      level: "error",
+    }),
+    new winston.transports.File({
+      filename: path.join(__dirname, "../logs/combined.log"),
+    }),
     new winston.transports.Console({
       format: winston.format.simple(),
     }),
@@ -78,6 +83,9 @@ class DraftService {
       // Initialize local documents directory
       this.initializeDocumentsDirectory();
 
+      // Initialize logs directory
+      this.initializeLogsDirectory();
+
       // Initialize Accord Project template
       await this.initializeTemplate();
 
@@ -111,6 +119,19 @@ class DraftService {
       logger.info(`Documents directory initialized: ${this.documentsDir}`);
     } catch (error) {
       logger.error("Failed to initialize documents directory:", error);
+      throw error;
+    }
+  }
+
+  initializeLogsDirectory() {
+    try {
+      const logsDir = path.join(__dirname, "../logs");
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+      logger.info(`Logs directory initialized: ${logsDir}`);
+    } catch (error) {
+      logger.error("Failed to initialize logs directory:", error);
       throw error;
     }
   }

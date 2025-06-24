@@ -20,10 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Label } from '@/components/ui/label'
 import { contractTxWithToast } from '@/utils/contract-tx-with-toast'
 import { truncateHash } from '@/utils/truncate-hash'
 
@@ -79,10 +76,8 @@ export const LateDeliveryContractInteractions: FC = () => {
     fractionalPart?: string
   }>({})
 
-  const [myDrafts, setMyDrafts] = useState<any[]>([])
   const [generatedDocuments, setGeneratedDocuments] = useState<GeneratedDocument[]>([])
   const [isLoadingInfo, setIsLoadingInfo] = useState(false)
-  const [isLoadingDrafts, setIsLoadingDrafts] = useState(false)
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
   const [processResult, setProcessResult] = useState<{
     penalty?: string
@@ -157,24 +152,7 @@ export const LateDeliveryContractInteractions: FC = () => {
     }
   }
 
-  // Fetch user's drafts
-  const fetchMyDrafts = async () => {
-    if (!contract || !api || !activeAccount) return
 
-    setIsLoadingDrafts(true)
-    try {
-      const result = await contractQuery(api, '', contract, 'get_my_drafts')
-      const { output, isError, decodedOutput } = decodeOutput(result, contract, 'get_my_drafts')
-      if (isError) throw new Error(decodedOutput)
-      setMyDrafts(output || [])
-    } catch (e) {
-      console.error('Error fetching drafts:', e)
-      toast.error('Error fetching drafts')
-      setMyDrafts([])
-    } finally {
-      setIsLoadingDrafts(false)
-    }
-  }
 
   // Fetch generated documents from draft service
   const fetchGeneratedDocuments = async () => {
@@ -250,17 +228,16 @@ export const LateDeliveryContractInteractions: FC = () => {
           txHash: txResult.extrinsicHash?.toString(),
           blockHash: txResult.blockHash?.toString(),
           blockNumber: (txResult as any).blockNumber?.toString(),
-          success: (txResult as any).isCompleted && !(txResult as any).isError
+          success: !!txResult.extrinsicHash && !(txResult as any).isError
         },
         timestamp: new Date()
       }])
 
       requestDraftForm.reset()
 
-      // Refresh drafts after submitting
+      // Refresh documents after submitting
       setTimeout(() => {
-        fetchMyDrafts()
-        fetchGeneratedDocuments() // Also refresh generated documents
+        fetchGeneratedDocuments() // Refresh generated documents
       }, 2000) // Wait a bit for the transaction to be processed
 
       toast.success('Draft request submitted successfully!')
@@ -570,7 +547,6 @@ export const LateDeliveryContractInteractions: FC = () => {
   useEffect(() => {
     if (contract) {
       fetchContractInfo()
-      fetchMyDrafts()
       fetchGeneratedDocuments()
     }
   }, [contract, activeAccount])
@@ -949,36 +925,34 @@ export const LateDeliveryContractInteractions: FC = () => {
                   <div className="space-y-3">
                     <h4 className="text-sm font-semibold text-gray-800 border-b pb-1">Output Options</h4>
 
-                    <FormField
-                      control={requestDraftForm.control}
-                      name="outputFormat"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Output Format</FormLabel>
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              className="flex space-x-6"
+                    <FormItem>
+                      <FormLabel>Output Format</FormLabel>
+                      <FormControl>
+                        <div className="flex space-x-6">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              value="md"
+                              {...requestDraftForm.register('outputFormat')}
                               disabled={requestDraftForm.formState.isSubmitting}
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="md" id="md" />
-                                <Label htmlFor="md">Markdown</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="pdf" id="pdf" />
-                                <Label htmlFor="pdf">PDF</Label>
-                              </div>
-                            </RadioGroup>
-                          </FormControl>
-                          <p className="text-xs text-gray-500">
-                            Choose the format for your generated contract document
-                          </p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            />
+                            <span className="text-sm">Markdown</span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              value="pdf"
+                              {...requestDraftForm.register('outputFormat')}
+                              disabled={requestDraftForm.formState.isSubmitting}
+                            />
+                            <span className="text-sm">PDF</span>
+                          </label>
+                        </div>
+                      </FormControl>
+                      <p className="text-xs text-gray-500">
+                        Choose the format for your generated contract document
+                      </p>
+                    </FormItem>
                   </div>
 
                   <Button
@@ -1056,27 +1030,7 @@ export const LateDeliveryContractInteractions: FC = () => {
             </Card>
           )}
 
-          {/* My Drafts */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-base">My Drafts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoadingDrafts ? (
-                <p>Loading drafts...</p>
-              ) : myDrafts.length > 0 ? (
-                <div className="space-y-2">
-                  {myDrafts.map((draft, index) => (
-                    <div key={index} className="p-3 border rounded text-sm">
-                      <pre className="whitespace-pre-wrap">{JSON.stringify(draft, null, 2)}</pre>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No drafts found</p>
-              )}
-            </CardContent>
-          </Card>
+
 
           {/* Generated Documents */}
           <Card className="lg:col-span-2">
