@@ -415,3 +415,244 @@
 {"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-23T22:41:42.022Z"}
 {"level":"info","message":"Draft result finalized for request 1750718490037: 0xb96185787178730e43c49775337418cc59503fef34f6259d5bfba0971069741a","timestamp":"2025-06-23T22:41:48.714Z"}
 {"level":"info","message":"Received SIGINT, shutting down gracefully...","timestamp":"2025-06-23T22:42:30.855Z"}
+{"level":"info","message":"Initializing Draft Service...","timestamp":"2025-06-24T18:59:59.241Z"}
+{"level":"info","message":"Connected to Substrate node: ws://localhost:9944","timestamp":"2025-06-24T18:59:59.316Z"}
+{"level":"info","message":"Service account initialized: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY","timestamp":"2025-06-24T18:59:59.328Z"}
+{"level":"info","message":"Contract ABI loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/inkathon/contracts/late-delivery-and-penalty/deployments/late-delivery-and-penalty.json","timestamp":"2025-06-24T18:59:59.330Z"}
+{"level":"info","message":"Contract initialized: 5FL81Ugr5Fp8bhPThxNRNdKkykvSnSDwWDmjZDLSvSDuaQMB","timestamp":"2025-06-24T18:59:59.337Z"}
+{"level":"info","message":"Documents directory initialized: ./generated-documents","timestamp":"2025-06-24T18:59:59.337Z"}
+{"level":"info","message":"Template loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/archives/latedeliveryandpenalty","timestamp":"2025-06-24T18:59:59.673Z"}
+{"level":"info","message":"Draft Service initialization complete","timestamp":"2025-06-24T18:59:59.674Z"}
+{"level":"info","message":"Starting to listen for DraftRequested events...","timestamp":"2025-06-24T18:59:59.674Z"}
+{"level":"info","message":"Draft Service started successfully","timestamp":"2025-06-24T18:59:59.681Z"}
+{"level":"info","message":"Draft Service is running...","timestamp":"2025-06-24T18:59:59.681Z"}
+{"level":"info","message":"Health server running on port 3001","timestamp":"2025-06-24T18:59:59.681Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T18:59:59.681Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:01:36.029Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:01:36.029Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:01:36.029Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f1500900000000000000dd057b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a332c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31302e352c2263617050657263656e74616765223a35352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31352c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973227d852e51a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:01:36.029Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:01:36.030Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:01:36.030Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:01:36.030Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:01:36.030Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:01:36.030Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:01:36.030Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:01:36.030Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:01:36.030Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:01:42.018Z"}
+{"level":"info","message":"Initializing Draft Service...","timestamp":"2025-06-24T19:04:41.523Z"}
+{"level":"info","message":"Connected to Substrate node: ws://localhost:9944","timestamp":"2025-06-24T19:04:41.594Z"}
+{"level":"info","message":"Service account initialized: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY","timestamp":"2025-06-24T19:04:41.605Z"}
+{"level":"info","message":"Contract ABI loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/inkathon/contracts/late-delivery-and-penalty/deployments/late-delivery-and-penalty.json","timestamp":"2025-06-24T19:04:41.607Z"}
+{"level":"info","message":"Contract initialized: 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","timestamp":"2025-06-24T19:04:41.614Z"}
+{"level":"info","message":"Documents directory initialized: ./generated-documents","timestamp":"2025-06-24T19:04:41.614Z"}
+{"level":"info","message":"Template loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/archives/latedeliveryandpenalty","timestamp":"2025-06-24T19:04:42.057Z"}
+{"level":"info","message":"Draft Service initialization complete","timestamp":"2025-06-24T19:04:42.058Z"}
+{"level":"info","message":"Starting to listen for DraftRequested events...","timestamp":"2025-06-24T19:04:42.058Z"}
+{"level":"info","message":"Draft Service started successfully","timestamp":"2025-06-24T19:04:42.065Z"}
+{"level":"info","message":"Initializing Draft Service...","timestamp":"2025-06-24T19:05:20.296Z"}
+{"level":"info","message":"Connected to Substrate node: ws://localhost:9944","timestamp":"2025-06-24T19:05:20.358Z"}
+{"level":"info","message":"Service account initialized: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY","timestamp":"2025-06-24T19:05:20.369Z"}
+{"level":"info","message":"Contract ABI loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/inkathon/contracts/late-delivery-and-penalty/deployments/late-delivery-and-penalty.json","timestamp":"2025-06-24T19:05:20.370Z"}
+{"level":"info","message":"Contract initialized: 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","timestamp":"2025-06-24T19:05:20.378Z"}
+{"level":"info","message":"Documents directory initialized: ./generated-documents","timestamp":"2025-06-24T19:05:20.378Z"}
+{"level":"info","message":"Template loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/archives/latedeliveryandpenalty","timestamp":"2025-06-24T19:05:20.506Z"}
+{"level":"info","message":"Draft Service initialization complete","timestamp":"2025-06-24T19:05:20.506Z"}
+{"level":"info","message":"Starting to listen for DraftRequested events...","timestamp":"2025-06-24T19:05:20.507Z"}
+{"level":"info","message":"Draft Service started successfully","timestamp":"2025-06-24T19:05:20.514Z"}
+{"level":"info","message":"Draft Service is running...","timestamp":"2025-06-24T19:05:20.514Z"}
+{"level":"info","message":"Health server running on port 3001","timestamp":"2025-06-24T19:05:20.514Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:05:20.514Z"}
+{"level":"info","message":"Initializing Draft Service...","timestamp":"2025-06-24T19:07:33.182Z"}
+{"level":"info","message":"Connected to Substrate node: ws://localhost:9944","timestamp":"2025-06-24T19:07:33.247Z"}
+{"level":"info","message":"Service account initialized: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY","timestamp":"2025-06-24T19:07:33.259Z"}
+{"level":"info","message":"Contract ABI loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/inkathon/contracts/late-delivery-and-penalty/deployments/late-delivery-and-penalty.json","timestamp":"2025-06-24T19:07:33.259Z"}
+{"level":"info","message":"Contract initialized: 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","timestamp":"2025-06-24T19:07:33.268Z"}
+{"level":"info","message":"Documents directory initialized: ./generated-documents","timestamp":"2025-06-24T19:07:33.268Z"}
+{"level":"info","message":"Template loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/archives/latedeliveryandpenalty","timestamp":"2025-06-24T19:07:33.580Z"}
+{"level":"info","message":"Draft Service initialization complete","timestamp":"2025-06-24T19:07:33.580Z"}
+{"level":"info","message":"Starting to listen for DraftRequested events...","timestamp":"2025-06-24T19:07:33.580Z"}
+{"level":"info","message":"Draft Service started successfully","timestamp":"2025-06-24T19:07:33.589Z"}
+{"level":"info","message":"Draft Service is running...","timestamp":"2025-06-24T19:07:33.590Z"}
+{"level":"info","message":"Health server running on port 3001","timestamp":"2025-06-24T19:07:33.590Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:07:33.590Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:08:00.040Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:08:00.041Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:08:00.041Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f1500a00000000000000dd057b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a332c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31302e352c2263617050657263656e74616765223a35352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31352c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973227d890a57a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:08:00.041Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:08:00.041Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:08:00.041Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:08:00.041Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:08:00.041Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:08:00.042Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:08:00.042Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:08:00.042Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:08:00.042Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:08:00.042Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:08:00.042Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:08:00.042Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:08:00.042Z"}
+{"level":"info","message":"Processing draft request 1750792080042 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: md)","timestamp":"2025-06-24T19:08:00.042Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:08:00.104Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:08:00.104Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:08:00.104Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:08:00.104Z"}
+{"level":"info","message":"Markdown generated and saved to: generated-documents/contract-1750792080042-1750792081166.md","timestamp":"2025-06-24T19:08:01.166Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750792080042-1750792081166.md","timestamp":"2025-06-24T19:08:01.167Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:08:06.023Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:08:06.023Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:08:06.023Z"}
+{"level":"info","message":"Draft result submitted for request 1750792080042: 0xfb83a4241f1358f8a6b74dd04337b72e8746239f537a2fc43134dc6c67c5f7ad","timestamp":"2025-06-24T19:08:06.034Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:08:12.027Z"}
+{"level":"info","message":"Draft result finalized for request 1750792080042: 0xfb83a4241f1358f8a6b74dd04337b72e8746239f537a2fc43134dc6c67c5f7ad","timestamp":"2025-06-24T19:08:19.435Z"}
+{"level":"info","message":"Initializing Draft Service...","timestamp":"2025-06-24T19:09:30.690Z"}
+{"level":"info","message":"Connected to Substrate node: ws://localhost:9944","timestamp":"2025-06-24T19:09:30.752Z"}
+{"level":"info","message":"Service account initialized: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY","timestamp":"2025-06-24T19:09:30.764Z"}
+{"level":"info","message":"Contract ABI loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/inkathon/contracts/late-delivery-and-penalty/deployments/late-delivery-and-penalty.json","timestamp":"2025-06-24T19:09:30.765Z"}
+{"level":"info","message":"Contract initialized: 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","timestamp":"2025-06-24T19:09:30.774Z"}
+{"level":"info","message":"Documents directory initialized: ./generated-documents","timestamp":"2025-06-24T19:09:30.774Z"}
+{"level":"info","message":"Template loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/archives/latedeliveryandpenalty","timestamp":"2025-06-24T19:09:31.032Z"}
+{"level":"info","message":"Draft Service initialization complete","timestamp":"2025-06-24T19:09:31.032Z"}
+{"level":"info","message":"Starting to listen for DraftRequested events...","timestamp":"2025-06-24T19:09:31.032Z"}
+{"level":"info","message":"Draft Service started successfully","timestamp":"2025-06-24T19:09:31.041Z"}
+{"level":"info","message":"Draft Service is running...","timestamp":"2025-06-24T19:09:31.041Z"}
+{"level":"info","message":"Health server running on port 3001","timestamp":"2025-06-24T19:09:31.041Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:09:31.042Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:10:00.029Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:10:00.029Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:10:00.029Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f1500b00000000000000dd057b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a332c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31302e352c2263617050657263656e74616765223a35352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31352c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973227d50df58a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:10:00.030Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:10:00.031Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:10:00.031Z"}
+{"level":"info","message":"Processing draft request 1750792200031 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: pdf)","timestamp":"2025-06-24T19:10:00.031Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:10:00.099Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:10:00.099Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:10:00.099Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:10:00.099Z"}
+{"level":"info","message":"Converting markdown to PDF...","timestamp":"2025-06-24T19:10:00.992Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:10:06.006Z"}
+{"level":"info","message":"PDF generated and saved to: generated-documents/contract-1750792200031-1750792200992.pdf","timestamp":"2025-06-24T19:10:10.305Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750792200031-1750792200992.pdf","timestamp":"2025-06-24T19:10:10.305Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:10:12.026Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:10:12.027Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:10:12.027Z"}
+{"level":"info","message":"Draft result submitted for request 1750792200031: 0x5af7a7299e225b3ed656d80e723569d60c0299eb01b9fd6d8f39d99e65db1fe9","timestamp":"2025-06-24T19:10:12.039Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:10:18.022Z"}
+{"level":"info","message":"Draft result finalized for request 1750792200031: 0x5af7a7299e225b3ed656d80e723569d60c0299eb01b9fd6d8f39d99e65db1fe9","timestamp":"2025-06-24T19:10:25.437Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:18:00.029Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:18:00.030Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f1500c0000000000000031067b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a332c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31302e352c2263617050657263656e74616765223a35352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31352c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973222c225f6f7574707574466f726d6174223a226d64227d483260a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:18:00.030Z"}
+{"level":"info","message":"Processing draft request 1750792680031 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: pdf)","timestamp":"2025-06-24T19:18:00.031Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:18:00.045Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:18:00.045Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:18:00.045Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:18:00.045Z"}
+{"component":"@accordproject/concerto-util","errorType":"DefaultBaseException","level":"error","message":"Error processing draft request 1750792680031: Unexpected properties for type io.clause.latedeliveryandpenalty@0.1.0.LateDeliveryAndPenalty: _outputFormat","name":"ValidationException","stack":"ValidationException: Unexpected properties for type io.clause.latedeliveryandpenalty@0.1.0.LateDeliveryAndPenalty: _outputFormat\n    at validateProperties (/Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/node_modules/@accordproject/concerto-core/lib/serializer/jsonpopulator.js:76:15)\n    at JSONPopulator.visitClassDeclaration (/Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/node_modules/@accordproject/concerto-core/lib/serializer/jsonpopulator.js:150:9)\n    at JSONPopulator.visit (/Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/node_modules/@accordproject/concerto-core/lib/serializer/jsonpopulator.js:123:25)\n    at e.exports.accept (/Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/node_modules/@accordproject/cicero-core/dist/cicero-core.js:2:41347)\n    at Serializer.fromJSON (/Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/node_modules/@accordproject/concerto-core/lib/serializer.js:195:26)\n    at TemplateMarkInterpreter.generate (/Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/node_modules/@accordproject/template-engine/dist/index.js:987:37)\n    at TemplateArchiveProcessor.draft (/Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/node_modules/@accordproject/template-engine/dist/index.js:1027:37)\n    at DraftService.processDraftRequest (/Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/src/index.js:524:58)\n    at /Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/src/index.js:285:32\n    at Type.forEach (<anonymous>)\n    at /Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/src/index.js:160:14\n    at /Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/node_modules/@polkadot/api/cjs/promise/decorateMethod.js:60:40\n    at /Users/martinhalford/Development/halfordit/concerto-codegen-rust/draft-service/node_modules/@polkadot/util/cjs/nextTick.js:16:13","timestamp":"2025-06-24T19:18:00.049Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:18:06.027Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:18:06.028Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:18:06.028Z"}
+{"level":"info","message":"Draft error submitted for request 1750792680031: 0xace066a3bd39022b4be5bfd28ee4065a2d458af35184b8dff886f7f953b8d74d","timestamp":"2025-06-24T19:18:06.042Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:18:12.016Z"}
+{"level":"info","message":"Draft error finalized for request 1750792680031: 0xace066a3bd39022b4be5bfd28ee4065a2d458af35184b8dff886f7f953b8d74d","timestamp":"2025-06-24T19:18:19.944Z"}
+{"level":"info","message":"Initializing Draft Service...","timestamp":"2025-06-24T19:20:17.568Z"}
+{"level":"info","message":"Connected to Substrate node: ws://localhost:9944","timestamp":"2025-06-24T19:20:17.631Z"}
+{"level":"info","message":"Service account initialized: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY","timestamp":"2025-06-24T19:20:17.643Z"}
+{"level":"info","message":"Contract ABI loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/inkathon/contracts/late-delivery-and-penalty/deployments/late-delivery-and-penalty.json","timestamp":"2025-06-24T19:20:17.644Z"}
+{"level":"info","message":"Contract initialized: 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","timestamp":"2025-06-24T19:20:17.652Z"}
+{"level":"info","message":"Documents directory initialized: ./generated-documents","timestamp":"2025-06-24T19:20:17.653Z"}
+{"level":"info","message":"Template loaded from: /Users/martinhalford/Development/halfordit/concerto-codegen-rust/archives/latedeliveryandpenalty","timestamp":"2025-06-24T19:20:17.840Z"}
+{"level":"info","message":"Draft Service initialization complete","timestamp":"2025-06-24T19:20:17.840Z"}
+{"level":"info","message":"Starting to listen for DraftRequested events...","timestamp":"2025-06-24T19:20:17.840Z"}
+{"level":"info","message":"Draft Service started successfully","timestamp":"2025-06-24T19:20:17.848Z"}
+{"level":"info","message":"Draft Service is running...","timestamp":"2025-06-24T19:20:17.848Z"}
+{"level":"info","message":"Health server running on port 3001","timestamp":"2025-06-24T19:20:17.848Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:20:17.848Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:21:06.024Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:21:06.024Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:21:06.024Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f1500d0000000000000031067b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a332c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31302e352c2263617050657263656e74616765223a35352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31352c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973222c225f6f7574707574466f726d6174223a226d64227dd20863a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:21:06.025Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:21:06.028Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:21:06.029Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:21:06.029Z"}
+{"level":"debug","message":"Original template data:","timestamp":"2025-06-24T19:21:06.030Z"}
+{"level":"debug","message":"Cleaned template data:","timestamp":"2025-06-24T19:21:06.030Z"}
+{"level":"debug","message":"Requested format:","timestamp":"2025-06-24T19:21:06.030Z"}
+{"level":"info","message":"Processing draft request 1750792866029 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: md)","timestamp":"2025-06-24T19:21:06.030Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:21:06.079Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:21:06.079Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:21:06.079Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:21:06.079Z"}
+{"level":"info","message":"Markdown generated and saved to: generated-documents/contract-1750792866029-1750792866974.md","timestamp":"2025-06-24T19:21:06.974Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750792866029-1750792866974.md","timestamp":"2025-06-24T19:21:06.975Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:21:12.025Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:21:12.025Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:21:12.025Z"}
+{"level":"info","message":"Draft result submitted for request 1750792866029: 0x27a1025d165e01da0777201dc8568c159bceb7735e5431718d5661dddc23685a","timestamp":"2025-06-24T19:21:12.041Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:21:18.022Z"}
+{"level":"info","message":"Draft result finalized for request 1750792866029: 0x27a1025d165e01da0777201dc8568c159bceb7735e5431718d5661dddc23685a","timestamp":"2025-06-24T19:21:24.876Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:21:48.032Z"}
+{"level":"debug","message":"Event received: contracts.ContractEmitted","timestamp":"2025-06-24T19:21:48.033Z"}
+{"level":"debug","message":"ContractEmitted event detected","timestamp":"2025-06-24T19:21:48.033Z"}
+{"contract":"5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS","data":"0xf62d927d83fcc9585424c2898bca58f1c7e756488410ce662bae03f01669f1500e0000000000000035067b2224636c617373223a22696f2e636c617573652e6c61746564656c6976657279616e6470656e616c747940302e312e302e4c61746544656c6976657279416e6450656e616c7479222c22636c617573654964223a22746573742d636c617573652d31222c22666f7263654d616a65757265223a66616c73652c2270656e616c74794475726174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a332c22756e6974223a2264617973227d2c2270656e616c747950657263656e74616765223a31302e352c2263617050657263656e74616765223a35352c227465726d696e6174696f6e223a7b2224636c617373223a226f72672e6163636f726470726f6a6563742e74696d6540302e332e302e4475726174696f6e222c22616d6f756e74223a31352c22756e6974223a2264617973227d2c226672616374696f6e616c50617274223a2264617973222c225f6f7574707574466f726d6174223a22706466227de6ac63a397010000","level":"debug","message":"Event data:","timestamp":"2025-06-24T19:21:48.033Z"}
+{"level":"debug","message":"Contract address:","timestamp":"2025-06-24T19:21:48.035Z"}
+{"level":"debug","message":"Raw hex data:","timestamp":"2025-06-24T19:21:48.035Z"}
+{"level":"debug","message":"Full human data:","timestamp":"2025-06-24T19:21:48.035Z"}
+{"level":"debug","message":"Raw data:","timestamp":"2025-06-24T19:21:48.035Z"}
+{"level":"info","message":"Event is from our contract, parsing hex data...","timestamp":"2025-06-24T19:21:48.035Z"}
+{"level":"debug","message":"Buffer as string (first 200 chars):","timestamp":"2025-06-24T19:21:48.036Z"}
+{"level":"debug","message":"Buffer length:","timestamp":"2025-06-24T19:21:48.036Z"}
+{"level":"debug","message":"Looking for JSON pattern...","timestamp":"2025-06-24T19:21:48.036Z"}
+{"level":"debug","message":"Found JSON hex pattern at position:","timestamp":"2025-06-24T19:21:48.036Z"}
+{"level":"debug","message":"Potential JSON string:","timestamp":"2025-06-24T19:21:48.036Z"}
+{"level":"info","message":"Successfully extracted template data via hex!","timestamp":"2025-06-24T19:21:48.036Z"}
+{"level":"debug","message":"Template JSON:","timestamp":"2025-06-24T19:21:48.036Z"}
+{"level":"debug","message":"Original template data:","timestamp":"2025-06-24T19:21:48.036Z"}
+{"level":"debug","message":"Cleaned template data:","timestamp":"2025-06-24T19:21:48.036Z"}
+{"level":"debug","message":"Requested format:","timestamp":"2025-06-24T19:21:48.037Z"}
+{"level":"info","message":"Processing draft request 1750792908036 from 5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS (format: pdf)","timestamp":"2025-06-24T19:21:48.037Z"}
+{"level":"debug","message":"Event received: contracts.Called","timestamp":"2025-06-24T19:21:48.074Z"}
+{"level":"debug","message":"Event received: contracts.StorageDepositTransferredAndHeld","timestamp":"2025-06-24T19:21:48.074Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:21:48.074Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:21:48.074Z"}
+{"level":"info","message":"Converting markdown to PDF...","timestamp":"2025-06-24T19:21:48.627Z"}
+{"level":"info","message":"PDF generated and saved to: generated-documents/contract-1750792908036-1750792908627.pdf","timestamp":"2025-06-24T19:21:52.732Z"}
+{"level":"info","message":"Document accessible at: http://localhost:3001/documents/contract-1750792908036-1750792908627.pdf","timestamp":"2025-06-24T19:21:52.733Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:21:54.028Z"}
+{"level":"debug","message":"Event received: transactionPayment.TransactionFeePaid","timestamp":"2025-06-24T19:21:54.029Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicFailed","timestamp":"2025-06-24T19:21:54.029Z"}
+{"level":"info","message":"Draft result submitted for request 1750792908036: 0x88fff34916d446eded33a307a541b959c7ca85c0cfa877a72b93bc63f1053b88","timestamp":"2025-06-24T19:21:54.044Z"}
+{"level":"debug","message":"Event received: system.ExtrinsicSuccess","timestamp":"2025-06-24T19:22:00.021Z"}
+{"level":"info","message":"Draft result finalized for request 1750792908036: 0x88fff34916d446eded33a307a541b959c7ca85c0cfa877a72b93bc63f1053b88","timestamp":"2025-06-24T19:22:07.745Z"}

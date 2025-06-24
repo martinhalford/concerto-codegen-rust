@@ -7,9 +7,10 @@ A Node.js service that listens for blockchain events from ink! smart contracts a
 The Draft Service bridges blockchain smart contracts with Accord Project template processing:
 
 - **🔗 Blockchain Integration**: Listens for `DraftRequested` events from Substrate
-- **📄 Document Generation**: Uses Accord Project templates to create contracts
+- **📄 Document Generation**: Uses Accord Project templates to create contracts in Markdown or PDF format
 - **🌐 API Server**: Serves generated documents to frontend applications
 - **⚡ Real-time Processing**: Automatically processes requests as they occur
+- **📊 Multiple Formats**: Supports both Markdown (.md) and PDF (.pdf) output formats
 
 ## 🚀 **Quick Start**
 
@@ -54,6 +55,10 @@ AUTHORIZED_CALLER=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
 
 # Template Configuration
 TEMPLATE_ARCHIVE_PATH=../archives/latedeliveryandpenalty
+
+# Output Format Configuration
+# Set to 'md' for markdown files or 'pdf' for PDF files
+OUTPUT_FORMAT=md
 ```
 
 ### Start the Service
@@ -91,9 +96,19 @@ The service will:
     "id": "1750717926035-1750717927094",
     "requestId": "1750717926035",
     "status": "completed",
+    "format": "md",
     "documentUrl": "http://localhost:3001/documents/contract-1750717926035-1750717927094.md",
     "createdAt": "2025-06-23T22:32:07.095Z",
     "filename": "contract-1750717926035-1750717927094.md"
+  },
+  {
+    "id": "1750718082027-1750718082611",
+    "requestId": "1750718082027",
+    "status": "completed",
+    "format": "pdf",
+    "documentUrl": "http://localhost:3001/documents/contract-1750718082027-1750718082611.pdf",
+    "createdAt": "2025-06-23T22:35:12.612Z",
+    "filename": "contract-1750718082027-1750718082611.pdf"
   }
 ]
 ```
@@ -129,13 +144,60 @@ After successful generation:
 - Provides the document URL for frontend access
 - Handles any errors by calling `submit_draft_error`
 
+## 📊 **Output Formats**
+
+The service supports two output formats controlled by the `OUTPUT_FORMAT` environment variable:
+
+### Markdown Format (`OUTPUT_FORMAT=md`)
+
+- **File Extension**: `.md`
+- **Content Type**: `text/markdown`
+- **Use Case**: Web display, further processing, version control
+- **File Size**: Smaller file size
+- **Processing**: Fast generation
+
+### PDF Format (`OUTPUT_FORMAT=pdf`)
+
+- **File Extension**: `.pdf`
+- **Content Type**: `application/pdf`
+- **Use Case**: Professional documents, printing, legal compliance
+- **File Size**: Larger file size (includes formatting)
+- **Processing**: Requires PDF conversion (slightly slower)
+
+**Example Configuration:**
+
+```env
+# For Markdown output
+OUTPUT_FORMAT=md
+
+# For PDF output
+OUTPUT_FORMAT=pdf
+```
+
+### 🎯 **Frontend Format Selection**
+
+The service now supports **per-request format selection** from the frontend UI:
+
+- **Default**: Uses `OUTPUT_FORMAT` from environment file
+- **Override**: Frontend can specify format in template data via `_outputFormat` field
+- **UI Control**: Users can choose format (MD/PDF) when requesting drafts
+
+**Frontend Usage:**
+
+1. User selects format in UI (radio buttons for MD/PDF)
+2. Frontend embeds `_outputFormat` in template data JSON
+3. Service extracts format preference and generates accordingly
+4. Generated document matches user's choice
+
+This allows **mixed format usage** - some users can generate PDFs while others use Markdown, all from the same service instance!
+
 ## 📁 **File Structure**
 
 ```
 draft-service/
 ├── src/
 │   └── index.js           # Main service implementation
-├── generated-documents/   # Output directory for contracts
+├── generated-documents/   # Output directory for contracts (*.md or *.pdf)
 ├── package.json          # Dependencies and scripts
 ├── env.example           # Environment configuration template
 └── README.md            # This file
@@ -193,11 +255,18 @@ info: Draft generated and saved to: contract-1750717926035-1750717927094.md
    - Verify the template archive structure
 
 3. **"No events detected"**
+
    - Confirm the Substrate node is running
    - Check the `CONTRACT_ADDRESS` matches your deployed contract
    - Verify events are being emitted from the frontend
 
-## 🚀 **Production Deployment**
+4. **"PDF conversion failed"**
+   - Ensure `markdown-pdf` package is properly installed: `npm install markdown-pdf`
+   - Check system dependencies for PDF generation (phantomjs)
+   - Try switching to Markdown format temporarily: `OUTPUT_FORMAT=md`
+   - Check available disk space in the output directory
+
+## **Production Deployment**
 
 ### Docker
 

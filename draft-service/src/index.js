@@ -8,6 +8,7 @@ const winston = require("winston");
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const markdownpdf = require("markdown-pdf");
 
 // Load environment variables
 require("dotenv").config();
@@ -39,6 +40,7 @@ class DraftService {
     this.isRunning = false;
     this.documentsDir =
       process.env.DOCUMENTS_OUTPUT_DIR || "./generated-documents";
+    this.outputFormat = process.env.OUTPUT_FORMAT || "md"; // 'md' or 'pdf'
   }
 
   async initialize() {
@@ -510,29 +512,71 @@ class DraftService {
   async processDraftRequest(eventData) {
     const { requester, request_id, template_data, timestamp } = eventData;
 
-    logger.info(`Processing draft request ${request_id} from ${requester}`);
-
     try {
       // Parse template data
       const templateModelData = JSON.parse(template_data);
 
+      // Extract format preference from template data, fallback to env variable
+      const requestedFormat =
+        templateModelData._outputFormat || this.outputFormat;
+
+      // Remove the format preference from template data before processing
+      // Use JSON stringify/parse to ensure clean object without prototype chain issues
+      const cleanTemplateDataString = JSON.stringify(
+        templateModelData,
+        (key, value) => {
+          if (key === "_outputFormat") {
+            return undefined; // This removes the key entirely
+          }
+          return value;
+        }
+      );
+      const cleanTemplateData = JSON.parse(cleanTemplateDataString);
+
+      logger.debug(
+        "Original template data:",
+        JSON.stringify(templateModelData, null, 2)
+      );
+      logger.debug(
+        "Cleaned template data:",
+        JSON.stringify(cleanTemplateData, null, 2)
+      );
+      logger.debug("Requested format:", requestedFormat);
+
+      logger.info(
+        `Processing draft request ${request_id} from ${requester} (format: ${requestedFormat})`
+      );
+
       // Generate the draft using the template processor
       const draftMarkdown = await this.templateProcessor.draft(
-        templateModelData,
+        cleanTemplateData,
         "markdown",
         { verbose: false }
       );
 
-      // Generate filename and save to local filesystem
-      const filename = `contract-${request_id}-${Date.now()}.md`;
-      const filepath = path.join(this.documentsDir, filename);
+      let filename, filepath, documentUrl;
 
-      fs.writeFileSync(filepath, draftMarkdown);
+      if (requestedFormat === "pdf") {
+        // Generate PDF
+        filename = `contract-${request_id}-${Date.now()}.pdf`;
+        filepath = path.join(this.documentsDir, filename);
 
-      // Create document URL for accessing the file
-      const documentUrl = `${process.env.DOCUMENTS_BASE_URL}/${filename}`;
+        logger.info("Converting markdown to PDF...");
+        await this.convertMarkdownToPdf(draftMarkdown, filepath);
 
-      logger.info(`Draft generated and saved to: ${filepath}`);
+        documentUrl = `${process.env.DOCUMENTS_BASE_URL}/${filename}`;
+        logger.info(`PDF generated and saved to: ${filepath}`);
+      } else {
+        // Generate Markdown (default)
+        filename = `contract-${request_id}-${Date.now()}.md`;
+        filepath = path.join(this.documentsDir, filename);
+
+        fs.writeFileSync(filepath, draftMarkdown);
+
+        documentUrl = `${process.env.DOCUMENTS_BASE_URL}/${filename}`;
+        logger.info(`Markdown generated and saved to: ${filepath}`);
+      }
+
       logger.info(`Document accessible at: ${documentUrl}`);
 
       // Submit result back to contract (using document URL instead of IPFS hash)
@@ -541,6 +585,30 @@ class DraftService {
       logger.error(`Error processing draft request ${request_id}:`, error);
       await this.submitDraftError(request_id, error.message);
     }
+  }
+
+  async convertMarkdownToPdf(markdown, outputPath) {
+    return new Promise((resolve, reject) => {
+      // Configure markdown-pdf options (based on generate-pdf.js)
+      const options = {
+        paperFormat: "A4",
+        paperOrientation: "portrait",
+        paperBorder: "2cm",
+        renderDelay: 1000,
+        type: "pdf",
+      };
+
+      // Convert markdown string to PDF
+      markdownpdf(options)
+        .from.string(markdown)
+        .to(outputPath, (err) => {
+          if (err) {
+            reject(new Error(`PDF conversion failed: ${err.message}`));
+          } else {
+            resolve();
+          }
+        });
+    });
   }
 
   async submitDraftResult(requestId, documentUrl) {
@@ -672,9 +740,14 @@ class DraftService {
         return res.status(404).json({ error: "Document not found" });
       }
 
-      // Set content type for markdown files
-      res.setHeader("Content-Type", "text/markdown");
-      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      // Set content type based on file extension
+      if (filename.endsWith(".pdf")) {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      } else {
+        res.setHeader("Content-Type", "text/markdown");
+        res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      }
 
       // Stream the file
       const fileStream = fs.createReadStream(filepath);
@@ -688,21 +761,22 @@ class DraftService {
 
         const files = fs
           .readdirSync(this.documentsDir)
-          .filter((file) => file.endsWith(".md"))
+          .filter((file) => file.endsWith(".md") || file.endsWith(".pdf"))
           .map((file) => {
             const filepath = path.join(this.documentsDir, file);
             const stats = fs.statSync(filepath);
 
-            // Parse filename to extract request info: contract-{requestId}-{timestamp}.md or draft-{requestId}-{timestamp}.md
-            const match = file.match(/^(contract|draft)-(.+)-(\d+)\.md$/);
+            // Parse filename to extract request info: contract-{requestId}-{timestamp}.(md|pdf) or draft-{requestId}-{timestamp}.(md|pdf)
+            const match = file.match(/^(contract|draft)-(.+)-(\d+)\.(md|pdf)$/);
             if (!match) return null;
 
-            const [, prefix, requestId, timestamp] = match;
+            const [, prefix, requestId, timestamp, extension] = match;
 
             return {
               id: `${requestId}-${timestamp}`,
               requestId: requestId,
               filename: file,
+              format: extension,
               status: "completed",
               documentUrl: `${process.env.DOCUMENTS_BASE_URL}/${file}`,
               createdAt: stats.birthtime.toISOString(),

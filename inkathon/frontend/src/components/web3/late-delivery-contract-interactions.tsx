@@ -28,6 +28,7 @@ interface GeneratedDocument {
   id: string
   requestId: string
   status: 'processing' | 'completed' | 'error'
+  format?: string
   documentUrl?: string
   errorMessage?: string
   createdAt: string
@@ -37,6 +38,7 @@ interface GeneratedDocument {
 // Form schemas
 const requestDraftSchema = z.object({
   templateData: z.string().min(1, 'Template data is required'),
+  outputFormat: z.enum(['md', 'pdf']).default('md'),
 })
 
 const processRequestSchema = z.object({
@@ -166,20 +168,27 @@ export const LateDeliveryContractInteractions: FC = () => {
   }
 
   // Request draft
-  const handleRequestDraft: SubmitHandler<RequestDraftForm> = async ({ templateData }) => {
+  const handleRequestDraft: SubmitHandler<RequestDraftForm> = async ({ templateData, outputFormat }) => {
     if (!activeAccount || !contract || !activeSigner || !api) {
       toast.error('Wallet not connected. Try again…')
       return
     }
 
     try {
-      const txResult = await contractTxWithToast(api, activeAccount.address, contract, 'request_draft', {}, [templateData])
+      // Create enhanced template data with format preference
+      const enhancedTemplateData = JSON.stringify({
+        ...JSON.parse(templateData),
+        _outputFormat: outputFormat
+      })
+
+      const txResult = await contractTxWithToast(api, activeAccount.address, contract, 'request_draft', {}, [enhancedTemplateData])
 
       // Add to transaction history
       setTransactionHistory(prev => [...prev, {
         type: 'request_draft',
         result: {
           templateData,
+          outputFormat,
           txHash: txResult.extrinsicHash?.toString(),
           blockHash: txResult.blockHash?.toString(),
           blockNumber: (txResult as any).blockNumber?.toString(),
@@ -607,6 +616,37 @@ export const LateDeliveryContractInteractions: FC = () => {
                       />
                     </FormControl>
                   </FormItem>
+
+                  <FormItem>
+                    <FormLabel>Output Format</FormLabel>
+                    <FormControl>
+                      <div className="flex space-x-4">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            value="md"
+                            {...requestDraftForm.register('outputFormat')}
+                            disabled={requestDraftForm.formState.isSubmitting}
+                            defaultChecked
+                          />
+                          <span className="text-sm">Markdown (.md)</span>
+                        </label>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            value="pdf"
+                            {...requestDraftForm.register('outputFormat')}
+                            disabled={requestDraftForm.formState.isSubmitting}
+                          />
+                          <span className="text-sm">PDF (.pdf)</span>
+                        </label>
+                      </div>
+                    </FormControl>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Choose the format for your generated contract document
+                    </p>
+                  </FormItem>
+
                   <Button
                     type="submit"
                     className="w-full"
@@ -827,6 +867,18 @@ export const LateDeliveryContractInteractions: FC = () => {
                           </span>
                         </div>
 
+                        {document.format && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Format:</span>
+                            <span className={`text-xs px-2 py-1 rounded font-medium ${document.format === 'pdf'
+                              ? 'bg-red-100 text-red-800 border border-red-200'
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              }`}>
+                              {document.format.toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+
                         {document.status === 'completed' && document.documentUrl && (
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Document:</span>
@@ -836,7 +888,7 @@ export const LateDeliveryContractInteractions: FC = () => {
                               onClick={() => window.open(document.documentUrl, '_blank')}
                               className="h-6 px-2 text-xs"
                             >
-                              📄 View/Download
+                              {document.format === 'pdf' ? '📕' : '📄'} {document.format === 'pdf' ? 'View PDF' : 'View/Download'}
                             </Button>
                           </div>
                         )}
