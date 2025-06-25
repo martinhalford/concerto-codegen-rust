@@ -14,8 +14,6 @@ Code generator that transforms Concerto model definitions (.cto files) into exec
 
 ## **⚡ 5-Minute Quick Start**
 
-Get the complete integration running instantly:
-
 ### Prerequisites
 
 - **Node.js** 18+
