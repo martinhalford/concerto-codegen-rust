@@ -179,7 +179,7 @@ class DraftService {
     // Subscribe to system events to catch contract events
     const unsub = await this.api.query.system.events((events) => {
       events.forEach((record) => {
-        const { event } = record;
+        const { event, phase } = record;
 
         logger.debug(`Event received: ${event.section}.${event.method}`);
 
@@ -189,346 +189,132 @@ class DraftService {
           event.method === "ContractEmitted"
         ) {
           logger.debug("ContractEmitted event detected");
-          logger.debug("Event data:", event.data.toHuman());
 
-          // Try to decode the event using the contract
           try {
-            // Get both human-readable and raw formats
-            const humanData = event.data.toHuman();
-            const rawData = event.data.toPrimitive();
-
-            // Try multiple ways to extract contract address and hex data
-            let contractAddress =
-              humanData?.contract || rawData?.[0]?.toString();
-            let hexData = humanData?.data || rawData?.[1]?.toString();
+            // Extract contract address and data from the event
+            const eventData = event.data;
+            const contractAddress = eventData[0].toString();
+            const eventBytes = eventData[1];
 
             logger.debug("Contract address:", contractAddress);
-            logger.debug("Raw hex data:", hexData);
-            logger.debug("Full human data:", JSON.stringify(humanData));
-            logger.debug("Raw data:", JSON.stringify(rawData));
+            logger.debug("Event bytes:", eventBytes.toString());
 
-            // Also try to get raw data directly
-            if (!hexData || !contractAddress) {
-              logger.debug("Trying to extract from raw event data...");
-              logger.debug("Event data toString:", event.data.toString());
-              logger.debug("Event data type:", typeof event.data);
-            }
+            // Check if this event is from our contract
+            if (contractAddress === process.env.CONTRACT_ADDRESS) {
+              logger.info("Event from our contract, attempting to decode...");
 
-            // Try to process regardless if we can find the hex data in the debug log
-            if (
-              contractAddress === process.env.CONTRACT_ADDRESS ||
-              humanData.contract === process.env.CONTRACT_ADDRESS ||
-              JSON.stringify(humanData).includes(process.env.CONTRACT_ADDRESS)
-            ) {
-              logger.info("Event is from our contract, parsing hex data...");
+              // Try to decode using the contract ABI
+              try {
+                const decoded = this.contract.abi.decodeEvent(eventBytes);
+                logger.debug("Decoded event:", decoded);
 
-              // Try multiple ways to get the hex data
-              let actualHexData = hexData;
-              if (!actualHexData || actualHexData === "{}") {
-                // Try to extract from the full event data string
-                const eventStr = JSON.stringify(humanData);
-                const hexMatch = eventStr.match(/"data":"(0x[a-fA-F0-9]+)"/);
-                if (hexMatch) {
-                  actualHexData = hexMatch[1];
-                  logger.debug("Extracted hex from string:", actualHexData);
-                }
-              }
+                if (
+                  decoded &&
+                  decoded.event &&
+                  decoded.event.identifier === "DraftRequested"
+                ) {
+                  logger.info("DraftRequested event successfully decoded!");
 
-              // Parse the hex data manually since ABI decoding isn't working
-              if (actualHexData && actualHexData.startsWith("0x")) {
-                try {
-                  // Remove 0x prefix and convert to buffer
-                  const buffer = Buffer.from(actualHexData.slice(2), "hex");
-                  const bufferStr = buffer.toString();
+                  // Extract the event arguments
+                  const args = decoded.args;
+                  const eventInfo = {
+                    name: "DraftRequested",
+                    data: {
+                      requester: args[0].toString(),
+                      request_id: args[1].toNumber
+                        ? args[1].toNumber()
+                        : parseInt(args[1].toString()),
+                      template_data: args[2].toString(),
+                      timestamp: args[3].toNumber
+                        ? args[3].toNumber()
+                        : parseInt(args[3].toString()),
+                    },
+                  };
 
+                  logger.debug("Extracted event data:", eventInfo.data);
+
+                  // Process the draft request
+                  this.processDraftRequest(eventInfo.data);
+                } else if (decoded && decoded.event) {
                   logger.debug(
-                    "Buffer as string (first 200 chars):",
-                    bufferStr.substring(0, 200)
+                    `Decoded event is ${decoded.event.identifier}, not DraftRequested`
                   );
-                  logger.debug("Buffer length:", bufferStr.length);
-                  logger.debug("Looking for JSON pattern...");
+                } else {
+                  logger.warn(
+                    "Failed to decode event or no event identifier found"
+                  );
+                }
+              } catch (decodeError) {
+                logger.error("Failed to decode event with ABI:", decodeError);
 
-                  // Look for JSON pattern in hex directly
-                  const hexBuffer = actualHexData.slice(2); // Remove 0x
+                // Fallback: Try manual hex parsing for debugging
+                const hexData = eventBytes.toString();
+                logger.debug("Raw hex data for manual parsing:", hexData);
 
-                  // Pattern for {"buyer" or similar JSON start
-                  const jsonHexPattern = "7b22"; // hex for '{"'
-                  let jsonHexStart = hexBuffer.indexOf(jsonHexPattern);
-
-                  if (jsonHexStart !== -1) {
-                    logger.debug(
-                      "Found JSON hex pattern at position:",
-                      jsonHexStart
-                    );
-
-                    // Extract from this position to the end and try to find valid JSON
-                    const remainingHex = hexBuffer.substring(jsonHexStart);
-                    const jsonBuffer = Buffer.from(remainingHex, "hex");
-                    const jsonStr = jsonBuffer.toString();
+                if (hexData.startsWith("0x")) {
+                  try {
+                    // Remove 0x prefix and convert to buffer
+                    const buffer = Buffer.from(hexData.slice(2), "hex");
+                    const bufferStr = buffer.toString("utf8");
 
                     logger.debug(
-                      "Potential JSON string:",
-                      jsonStr.substring(0, 200)
+                      "Buffer as UTF8 string (first 200 chars):",
+                      bufferStr.substring(0, 200)
                     );
 
-                    // Find the first complete JSON object
-                    let braceCount = 0;
-                    let jsonEnd = -1;
-                    let jsonStart = jsonStr.indexOf("{");
+                    // Look for JSON patterns
+                    const jsonMatch = bufferStr.match(/\{.*\}/);
+                    if (jsonMatch) {
+                      const potentialJson = jsonMatch[0];
+                      logger.debug("Found potential JSON:", potentialJson);
 
-                    if (jsonStart !== -1) {
-                      for (let i = jsonStart; i < jsonStr.length; i++) {
-                        if (jsonStr[i] === "{") braceCount++;
-                        if (jsonStr[i] === "}") {
-                          braceCount--;
-                          if (braceCount === 0) {
-                            jsonEnd = i + 1;
-                            break;
-                          }
-                        }
-                      }
-
-                      if (jsonEnd !== -1) {
-                        const extractedJson = jsonStr.substring(
-                          jsonStart,
-                          jsonEnd
-                        );
+                      try {
+                        JSON.parse(potentialJson);
                         logger.info(
-                          "Successfully extracted template data via hex!"
+                          "Successfully found valid JSON in hex data!"
                         );
-                        logger.debug("Template JSON:", extractedJson);
 
-                        // Validate it's proper JSON
-                        try {
-                          JSON.parse(extractedJson);
-
-                          // Process the request with extracted data
-                          this.processDraftRequest({
-                            requester:
-                              contractAddress || process.env.CONTRACT_ADDRESS,
-                            request_id: Date.now(),
-                            template_data: extractedJson,
-                            timestamp: Date.now(),
-                          });
-                          return; // Exit early on success
-                        } catch (jsonError) {
-                          logger.debug(
-                            "Invalid JSON, continuing with other methods"
-                          );
-                        }
-                      }
-                    }
-                  }
-
-                  // Find the JSON string in the buffer (fallback method)
-                  // Try different patterns to find the JSON
-                  let jsonStart = bufferStr.indexOf('{"$class"');
-                  if (jsonStart === -1) {
-                    jsonStart = bufferStr.indexOf('{"\\$class"'); // Escaped version
-                  }
-                  if (jsonStart === -1) {
-                    jsonStart = bufferStr.indexOf('{"$class"'); // Different escaping
-                  }
-                  if (jsonStart === -1) {
-                    jsonStart = bufferStr.indexOf('{"buyer"'); // Look for buyer field
-                  }
-                  if (jsonStart === -1) {
-                    jsonStart = bufferStr.indexOf('{"'); // Any JSON start
-                  }
-                  if (jsonStart === -1) {
-                    // Look for the hex pattern directly
-                    const hexPattern = "7b2224636c617373223a22"; // hex for '{"$class":"'
-                    const hexBuffer = actualHexData.slice(2); // Remove 0x
-                    const hexStart = hexBuffer.indexOf(hexPattern);
-                    if (hexStart !== -1) {
-                      // Extract from hex and convert to string
-                      const jsonHexStart = hexStart;
-                      // Find the end by looking for the closing brace pattern
-                      let jsonHexEnd = hexBuffer.length;
-
-                      // Extract and convert
-                      const jsonHex = hexBuffer.substring(jsonHexStart);
-                      const jsonBuffer = Buffer.from(jsonHex, "hex");
-                      const jsonStr = jsonBuffer.toString();
-
-                      // Find the actual end of the JSON in the string
-                      const realStart = jsonStr.indexOf('{"$class"');
-                      if (realStart !== -1) {
-                        let braceCount = 0;
-                        let realEnd = realStart;
-                        for (let i = realStart; i < jsonStr.length; i++) {
-                          if (jsonStr[i] === "{") braceCount++;
-                          if (jsonStr[i] === "}") {
-                            braceCount--;
-                            if (braceCount === 0) {
-                              realEnd = i + 1;
-                              break;
-                            }
-                          }
-                        }
-
-                        const extractedJson = jsonStr.substring(
-                          realStart,
-                          realEnd
-                        );
-                        logger.info(
-                          "Successfully extracted template data via hex!"
-                        );
-                        logger.debug("Template JSON:", extractedJson);
-
-                        // Process the request with extracted data
-                        this.processDraftRequest({
+                        // Create a mock event for processing
+                        const fallbackEventData = {
                           requester: contractAddress,
                           request_id: Date.now(),
-                          template_data: extractedJson,
+                          template_data: potentialJson,
                           timestamp: Date.now(),
-                        });
-                        return; // Exit early
+                        };
+
+                        this.processDraftRequest(fallbackEventData);
+                      } catch (jsonError) {
+                        logger.warn(
+                          "Found JSON-like data but it's not valid JSON:",
+                          jsonError.message
+                        );
                       }
+                    } else {
+                      logger.warn("No JSON pattern found in buffer string");
                     }
+                  } catch (bufferError) {
+                    logger.error(
+                      "Failed to parse hex data as buffer:",
+                      bufferError
+                    );
                   }
-
-                  logger.debug("JSON start position:", jsonStart);
-
-                  if (jsonStart !== -1) {
-                    // Find the end of the JSON
-                    let braceCount = 0;
-                    let jsonEnd = jsonStart;
-
-                    for (let i = jsonStart; i < bufferStr.length; i++) {
-                      if (bufferStr[i] === "{") braceCount++;
-                      if (bufferStr[i] === "}") {
-                        braceCount--;
-                        if (braceCount === 0) {
-                          jsonEnd = i + 1;
-                          break;
-                        }
-                      }
-                    }
-
-                    const jsonString = bufferStr.substring(jsonStart, jsonEnd);
-                    logger.info("Successfully extracted template data!");
-                    logger.debug("Template JSON:", jsonString);
-
-                    // Process the request with extracted data
-                    this.processDraftRequest({
-                      requester: contractAddress, // Use contract as requester for now
-                      request_id: Date.now(), // Use timestamp as request ID
-                      template_data: jsonString,
-                      timestamp: Date.now(),
-                    });
-                  } else {
-                    logger.warn("Could not find JSON in hex data");
-                  }
-                } catch (parseError) {
-                  logger.error("Error parsing hex data:", parseError);
                 }
               }
+            } else {
+              logger.debug(`Event from different contract: ${contractAddress}`);
             }
-          } catch (error) {
-            logger.error("Error processing contract event:", error);
+          } catch (eventError) {
+            logger.error("Error processing ContractEmitted event:", eventError);
           }
         }
       });
     });
 
-    // Handle graceful shutdown
-    process.on("SIGINT", () => {
-      logger.info("Received SIGINT, shutting down gracefully...");
-      unsub();
-      process.exit(0);
-    });
+    // Store the unsubscribe function for cleanup
+    this.eventUnsubscriber = unsub;
   }
 
-  async handleContractEvent(eventData) {
-    try {
-      logger.debug("Raw contract event received:", eventData);
-      const [contractAddress, eventBytes] = eventData;
-
-      logger.debug("Contract address from event:", contractAddress.toString());
-      logger.debug("Expected contract address:", process.env.CONTRACT_ADDRESS);
-
-      // Check if this event is from our contract
-      if (contractAddress.toString() !== process.env.CONTRACT_ADDRESS) {
-        logger.debug("Event from different contract, ignoring");
-        return;
-      }
-
-      logger.info("Event from our contract, attempting to decode...");
-
-      // Decode the event (simplified - in practice you'd use proper ABI decoding)
-      const eventInfo = this.decodeContractEvent(eventData);
-
-      logger.debug("Decoded event info:", eventInfo);
-
-      if (eventInfo && eventInfo.name === "DraftRequested") {
-        logger.info("DraftRequested event detected!");
-        await this.processDraftRequest(eventInfo.data);
-      } else {
-        logger.debug("Event is not DraftRequested or failed to decode");
-      }
-    } catch (error) {
-      logger.error("Error handling contract event:", error);
-    }
-  }
-
-  decodeContractEvent(eventData) {
-    try {
-      const [contractAddress, eventBytes] = eventData;
-
-      // Check if this event is from our contract
-      if (contractAddress.toString() !== process.env.CONTRACT_ADDRESS) {
-        return null;
-      }
-
-      logger.debug("Attempting to decode event bytes:", eventBytes);
-
-      // Use the contract ABI to decode the event
-      const decoded = this.contract.abi.decodeEvent(eventBytes);
-      logger.debug("Raw decoded result:", decoded);
-
-      // The decoded event should have event and args properties
-      if (decoded && decoded.event) {
-        logger.debug("Event identifier:", decoded.event.identifier);
-        logger.debug("Event args:", decoded.args);
-
-        if (decoded.event.identifier === "DraftRequested") {
-          // Extract the arguments - they should be in order: requester, request_id, template_data, timestamp
-          const args = decoded.args;
-
-          return {
-            name: "DraftRequested",
-            data: {
-              requester: args[0] ? args[0].toString() : "unknown",
-              request_id: args[1]
-                ? args[1].toNumber
-                  ? args[1].toNumber()
-                  : parseInt(args[1])
-                : 0,
-              template_data: args[2] ? args[2].toString() : "{}",
-              timestamp: args[3]
-                ? args[3].toNumber
-                  ? args[3].toNumber()
-                  : parseInt(args[3])
-                : Date.now(),
-            },
-          };
-        } else {
-          logger.debug(
-            `Event is ${decoded.event.identifier}, not DraftRequested`
-          );
-        }
-      } else {
-        logger.debug("No event identifier found in decoded result");
-      }
-
-      return null;
-    } catch (error) {
-      logger.error("Error decoding contract event:", error);
-      logger.debug("Event data:", eventData);
-      return null;
-    }
-  }
+  // Legacy methods removed - functionality integrated into listenForEvents()
 
   async processDraftRequest(eventData) {
     const { requester, request_id, template_data, timestamp } = eventData;
