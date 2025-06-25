@@ -2,6 +2,10 @@
 
 Code generator that transforms Concerto model definitions (.cto files) into executable Rust projects with business logic integration.
 
+# Smart Rust Contract Workflow
+
+![alt text](diagram.png)
+
 ## **Working Integration**
 
 - **ink! Smart Contract** deployed to Substrate - See [more here](https://use.ink/)
