@@ -2,14 +2,11 @@
 
 Code generator that transforms Concerto model definitions (.cto files) into executable Rust projects with business logic integration.
 
-## ** Complete Working Integration**
+## **Working Integration**
 
-**Want to see it in action?** We have a **complete end-to-end legal contract generation system**:
-
-- **ink! Smart Contract** deployed to Substrate
+- **ink! Smart Contract** deployed to Substrate - See [more here](https://use.ink/)
+- **ink!athon Frontend** with blockchain integration - See [more here](https://use.ink/docs/v5/getting-started/inkathon/)
 - **Draft Service** for real-time document generation
-- **React Frontend** with blockchain integration
-- **Document Management** with download capabilities
 
 ## **⚡ 5-Minute Quick Start**
 
@@ -556,4 +553,3 @@ curl https://your-domain.com/documents
 ## **📄 License**
 
 Apache License 2.0 - see [LICENSE](LICENSE) for details.
-
