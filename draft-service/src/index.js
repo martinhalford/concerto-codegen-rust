@@ -42,13 +42,46 @@ class DraftService {
     this.serviceAccount = null;
     this.template = null;
     this.templateProcessor = null;
-
     this.isRunning = false;
     this.documentsDir =
       process.env.DOCUMENTS_OUTPUT_DIR || "./generated-documents";
     this.outputFormat = process.env.OUTPUT_FORMAT || "md"; // 'md' or 'pdf'
     this.failedEvents = []; // Store failed events for debugging and UI display
-    this.maxFailedEvents = 50; // Limit stored failed events
+    this.maxFailedEvents = 20; // Reduced limit for cleaner storage
+  }
+
+  // Centralized error handling utility
+  handleError(context, error, additionalInfo = {}) {
+    const errorInfo = {
+      context,
+      message: error.message,
+      timestamp: Date.now(),
+      ...additionalInfo,
+    };
+
+    logger.error(`Error in ${context}:`, errorInfo);
+    return errorInfo;
+  }
+
+  // Simplified failed event recording
+  recordEventFailure(eventBytes, reason, error) {
+    if (this.failedEvents.length >= this.maxFailedEvents) {
+      this.failedEvents.pop(); // Remove oldest
+    }
+
+    const failureRecord = {
+      id: `fail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      reason,
+      error: error.message || error,
+      eventLength: eventBytes.length,
+      timestamp: Date.now(),
+    };
+
+    this.failedEvents.unshift(failureRecord);
+    logger.warn(`Event processing failed: ${reason}`, {
+      failureId: failureRecord.id,
+      totalFailures: this.failedEvents.length,
+    });
   }
 
   async initialize() {
@@ -106,7 +139,7 @@ class DraftService {
 
       logger.info("Draft Service initialization complete");
     } catch (error) {
-      logger.error("Failed to initialize Draft Service:", error);
+      this.handleError("initialization", error);
       throw error;
     }
   }
@@ -121,7 +154,7 @@ class DraftService {
       logger.info(`Contract ABI loaded from: ${contractPath}`);
       return contractData;
     } catch (error) {
-      logger.error("Failed to load contract ABI:", error);
+      this.handleError("loadContractAbi", error, { contractPath });
       throw error;
     }
   }
@@ -133,7 +166,9 @@ class DraftService {
       }
       logger.info(`Documents directory initialized: ${this.documentsDir}`);
     } catch (error) {
-      logger.error("Failed to initialize documents directory:", error);
+      this.handleError("initializeDocumentsDirectory", error, {
+        documentsDir: this.documentsDir,
+      });
       throw error;
     }
   }
@@ -146,7 +181,7 @@ class DraftService {
       }
       logger.info(`Logs directory initialized: ${logsDir}`);
     } catch (error) {
-      logger.error("Failed to initialize logs directory:", error);
+      this.handleError("initializeLogsDirectory", error, { logsDir });
       throw error;
     }
   }
@@ -207,7 +242,7 @@ class DraftService {
         );
         if (i === initMethods.length - 1) {
           // Last method failed, throw error
-          logger.error("All template initialization methods failed");
+          this.handleError("initializeTemplate", error, { templatePath });
           throw error;
         }
         // Continue to next method
@@ -233,7 +268,7 @@ class DraftService {
 
       logger.info("Draft Service started successfully");
     } catch (error) {
-      logger.error("Failed to start Draft Service:", error);
+      this.handleError("start", error);
       this.isRunning = false;
       throw error;
     }
@@ -260,7 +295,7 @@ class DraftService {
       this.isRunning = false;
       logger.info("Draft Service stopped successfully");
     } catch (error) {
-      logger.error("Error stopping Draft Service:", error);
+      this.handleError("stop", error);
     }
   }
 
@@ -291,71 +326,32 @@ class DraftService {
   }
 
   handleContractEvent(eventBytes) {
-    logger.info("Event received from contract, attempting to decode...");
-
     try {
-      // First attempt: Try standard Polkadot.js ABI decoding
-      const decodedEvent = this.contract.abi.decodeEvent(eventBytes);
-
-      logger.info("✅ Standard ABI decoding successful", {
-        eventName: decodedEvent.event.identifier,
-        hasArgs: !!decodedEvent.args,
-      });
-
-      // Process DraftRequested events
-      if (decodedEvent.event.identifier.includes("DraftRequested")) {
-        logger.info("Processing DraftRequested event");
-        this.processDraftRequest(decodedEvent.args);
-      } else {
-        logger.info(`Received ${decodedEvent.event.identifier} event`);
-      }
-    } catch (standardDecodeError) {
-      logger.warn(
-        "Standard ABI decoding failed, trying ink!-specific decoding:",
-        {
-          error: standardDecodeError.message,
-          eventLength: eventBytes.length,
-        }
+      // Use ink!-specific event decoding (optimized for ink! contracts)
+      const decoded = this.decodeInkEvent(eventBytes);
+      logger.info("Event decoding successful");
+      this.processDecodedEvent(decoded);
+    } catch (decodeError) {
+      this.recordEventFailure(
+        eventBytes,
+        "INK_EVENT_DECODING_FAILED",
+        decodeError
       );
-
-      // Fallback: Use ink!-specific event decoding
-      try {
-        const decoded = this.decodeInkEvent(eventBytes);
-
-        logger.info("✅ Ink! event decoding successful", {
-          eventName: decoded.event.identifier,
-          hasArgs: !!decoded.event.args,
-        });
-
-        // Process DraftRequested events
-        if (decoded.event.identifier.includes("DraftRequested")) {
-          logger.info("Processing DraftRequested event");
-          this.processDraftRequest(decoded.event.args);
-        } else {
-          logger.info(`Received ${decoded.event.identifier} event`);
-        }
-      } catch (inkDecodeError) {
-        logger.error("All event decoding methods failed:", {
-          standardError: standardDecodeError.message,
-          inkError: inkDecodeError.message,
-          eventLength: eventBytes.length,
-        });
-
-        // Record the failed event for debugging
-        this.recordFailedEvent({
-          contractAddress: process.env.CONTRACT_ADDRESS,
-          eventHex: eventBytes.toHex ? eventBytes.toHex() : "unavailable",
-          error: `All decoding failed: ${inkDecodeError.message}`,
-          timestamp: Date.now(),
-          reason: "ALL_DECODING_METHODS_FAILED",
-        });
-      }
     }
   }
 
-  // Simplified ink!-specific event decoder (only the working parts)
+  processDecodedEvent(decoded) {
+    if (decoded.event.identifier.includes("DraftRequested")) {
+      logger.info("Processing DraftRequested event");
+      this.processDraftRequest(decoded.event.args || decoded.args);
+    } else {
+      logger.info(`Received ${decoded.event.identifier} event`);
+    }
+  }
+
+  // Simplified ink!-specific event decoder
   decodeInkEvent(eventBytes) {
-    // Convert to Uint8Array for consistent processing (use hex conversion for accuracy)
+    // Convert to Uint8Array for consistent processing
     let eventData;
     if (typeof eventBytes.toHex === "function") {
       const hexString = eventBytes.toHex();
@@ -371,21 +367,12 @@ class DraftService {
       eventData = eventBytes;
     }
 
-    logger.info("Event data conversion:", {
-      originalLength: eventBytes.length,
-      convertedLength: eventData.length,
-      lengthDiff: eventData.length - eventBytes.length,
-    });
-
-    // Identify event type by length (the pattern that worked) with some flexibility
+    // Identify event type by length
     if (eventData.length > 100) {
-      // DraftRequested event (large event with JSON data)
       return this.decodeDraftRequestedEvent(eventData);
     } else if (eventData.length >= 39 && eventData.length <= 41) {
-      // LateDeliveryRequestSubmitted event (40 bytes ± 1)
       return this.decodeLateDeliveryRequestEvent(eventData);
     } else if (eventData.length >= 8 && eventData.length <= 10) {
-      // LateDeliveryResponseGenerated event (9 bytes ± 1)
       return this.decodeLateDeliveryResponseEvent(eventData);
     } else {
       throw new Error(
@@ -394,7 +381,7 @@ class DraftService {
     }
   }
 
-  // Working DraftRequested decoder (simplified)
+  // DraftRequested decoder
   decodeDraftRequestedEvent(eventData) {
     let offset = 0;
 
@@ -432,7 +419,7 @@ class DraftService {
     };
   }
 
-  // Working SCALE string decoder
+  // SCALE string decoder
   decodeScaleString(data) {
     // Decode compact length
     const compact = this.api.registry.createType("Compact<u32>", data);
@@ -449,7 +436,7 @@ class DraftService {
     };
   }
 
-  // Simplified other event decoders
+  // Other event decoders
   decodeLateDeliveryRequestEvent(eventData) {
     let offset = 0;
     const submitterBytes = eventData.slice(offset, offset + 32);
@@ -490,26 +477,6 @@ class DraftService {
         },
       },
     };
-  }
-
-  recordFailedEvent(failedEvent) {
-    // Add timestamp and unique ID
-    const eventRecord = {
-      id: `failed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      ...failedEvent,
-    };
-
-    // Add to beginning of array
-    this.failedEvents.unshift(eventRecord);
-
-    // Trim to max size
-    if (this.failedEvents.length > this.maxFailedEvents) {
-      this.failedEvents = this.failedEvents.slice(0, this.maxFailedEvents);
-    }
-
-    logger.warn(
-      `Recorded failed event ${eventRecord.id}. Total failed events: ${this.failedEvents.length}`
-    );
   }
 
   async processDraftRequest(eventData) {
@@ -562,7 +529,7 @@ class DraftService {
       // Submit result back to contract (using document URL instead of IPFS hash)
       await this.submitDraftResult(request_id, documentUrl);
     } catch (error) {
-      logger.error(`Error processing draft request ${request_id}:`, error);
+      this.handleError("processDraftRequest", error, { request_id });
       await this.submitDraftError(request_id, error.message);
     }
   }
@@ -625,10 +592,7 @@ class DraftService {
         }
       });
     } catch (error) {
-      logger.error(
-        `Error submitting draft result for request ${requestId}:`,
-        error
-      );
+      this.handleError("submitDraftResult", error, { requestId });
     }
   }
 
@@ -666,10 +630,7 @@ class DraftService {
         }
       });
     } catch (error) {
-      logger.error(
-        `Error submitting draft error for request ${requestId}:`,
-        error
-      );
+      this.handleError("submitDraftError", error, { requestId });
     }
   }
 
@@ -718,27 +679,32 @@ class DraftService {
         lastActivity: new Date().toISOString(),
         stats: {
           totalFailedEvents: this.failedEvents.length,
-          recentFailures: this.failedEvents.slice(0, 5).map((e) => ({
-            id: e.id,
-            reason: e.reason,
-            timestamp: new Date(e.timestamp).toISOString(),
-            error: e.error.slice(0, 100) + "...",
-          })),
+          lastFailure:
+            this.failedEvents.length > 0
+              ? {
+                  reason: this.failedEvents[0].reason,
+                  timestamp: new Date(
+                    this.failedEvents[0].timestamp
+                  ).toISOString(),
+                }
+              : null,
         },
       });
     });
 
     // Failed events endpoint for debugging
     app.get("/failed-events", (req, res) => {
-      const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+      const limit = Math.min(parseInt(req.query.limit) || 10, 50);
       const offset = parseInt(req.query.offset) || 0;
 
       const events = this.failedEvents
         .slice(offset, offset + limit)
         .map((event) => ({
-          ...event,
+          id: event.id,
+          reason: event.reason,
+          error: event.error,
+          eventLength: event.eventLength,
           timestamp: new Date(event.timestamp).toISOString(),
-          eventHex: event.eventHex.slice(0, 200) + "...", // Truncate for display
         }));
 
       res.json({
@@ -834,7 +800,7 @@ class DraftService {
 
         res.json(filteredFiles);
       } catch (error) {
-        logger.error("Error listing documents:", error);
+        this.handleError("listDocuments", error);
         res.status(500).json({ error: "Failed to list documents" });
       }
     });
