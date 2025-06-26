@@ -9,6 +9,7 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const markdownpdf = require("markdown-pdf");
+const { InkAbiDecoder } = require("./abi-decoder");
 
 // Load environment variables
 require("dotenv").config();
@@ -42,6 +43,7 @@ class DraftService {
     this.serviceAccount = null;
     this.template = null;
     this.templateProcessor = null;
+    this.abiDecoder = null; // New ABI decoder instance
     this.isRunning = false;
     this.documentsDir =
       process.env.DOCUMENTS_OUTPUT_DIR || "./generated-documents";
@@ -93,6 +95,10 @@ class DraftService {
         process.env.CONTRACT_ADDRESS
       );
       logger.info(`Contract initialized: ${process.env.CONTRACT_ADDRESS}`);
+
+      // Initialize the custom ABI decoder
+      this.abiDecoder = new InkAbiDecoder(this.api, this.contract);
+      logger.info("Custom ABI decoder initialized");
 
       // Initialize local documents directory
       this.initializeDocumentsDirectory();
@@ -264,424 +270,22 @@ class DraftService {
   }
 
   async listenForEvents() {
-    logger.info("Starting to listen for DraftRequested events...");
+    logger.info("Starting to listen for contract events...");
 
     // Subscribe to system events to catch contract events
     const unsub = await this.api.query.system.events((events) => {
       events.forEach((record) => {
-        const { event, phase } = record;
+        const { event } = record;
 
-        // Check if this is a contract event
+        // Check if this is a contract event from our contract
         if (
           event.section === "contracts" &&
           event.method === "ContractEmitted"
         ) {
-          try {
-            // Extract contract address and data from the event
-            const eventData = event.data;
-            const contractAddress = eventData[0].toString();
-            const eventBytes = eventData[1];
+          const [contractAddress, eventBytes] = event.data;
 
-            // Check if this event is from our contract
-            if (contractAddress === process.env.CONTRACT_ADDRESS) {
-              logger.info("Event from our contract, attempting to decode...");
-
-              // Debug the complete event structure
-              logger.info("Complete event structure:", {
-                section: event.section,
-                method: event.method,
-                data: event.data.map((d) => d.toString()),
-                topics: event.topics?.map((t) => t.toString()) || "no topics",
-              });
-
-              // Debug the raw event data
-              logger.info("Raw event data:", {
-                contractAddress: contractAddress,
-                eventBytesType: typeof eventBytes,
-                eventBytesLength: eventBytes.length,
-                eventBytesString: eventBytes.toString(),
-                eventBytesHex: eventBytes.toHex
-                  ? eventBytes.toHex()
-                  : "no toHex method",
-              });
-
-              // Try to decode using the contract ABI
-              try {
-                // Debug the ABI structure
-                logger.info("ABI debugging info:", {
-                  hasAbi: !!this.contract.abi,
-                  abiEvents: this.contract.abi?.events
-                    ? Object.keys(this.contract.abi.events)
-                    : "no events",
-                  decodeEventMethod: typeof this.contract.abi.decodeEvent,
-                  eventBytesType: typeof eventBytes,
-                  eventBytesConstructor: eventBytes.constructor.name,
-                  eventBytesLength: eventBytes.length,
-                });
-
-                // Check if eventBytes needs conversion
-                let eventData = eventBytes;
-                if (typeof eventBytes.toU8a === "function") {
-                  eventData = eventBytes.toU8a();
-                  logger.info("Converted eventBytes to Uint8Array");
-                }
-
-                logger.info("Calling decodeEvent with data:", {
-                  dataType: typeof eventData,
-                  dataConstructor: eventData.constructor.name,
-                  dataLength: eventData.length,
-                  firstFewBytes: Array.from(eventData.slice(0, 10)),
-                  fullHex: Array.from(eventData)
-                    .map((b) => b.toString(16).padStart(2, "0"))
-                    .join(""),
-                });
-
-                // Try to manually parse the hex data to understand the structure
-                logger.info("Manual hex analysis:", {
-                  originalHex: eventBytes.toHex(),
-                  possibleEventId: eventBytes.toHex().slice(0, 8),
-                  remainingData: eventBytes.toHex().slice(8),
-                });
-
-                // Try multiple decoding approaches
-                let decoded;
-
-                // Approach 1: Direct decodeEvent call
-                try {
-                  decoded = this.contract.abi.decodeEvent(eventData);
-                  logger.info("Approach 1 (direct decodeEvent) succeeded");
-                } catch (approach1Error) {
-                  logger.warn("Approach 1 failed:", approach1Error.message);
-
-                  // Approach 2: Try finding the event by signature topic
-                  try {
-                    // The DraftRequested signature topic
-                    const draftRequestedTopic =
-                      "0xa95a60bdaef26fa2156a65a63a4370085b124a2548dd2f66ce72fd4cdffcd75f";
-
-                    // Create a proper event record structure
-                    const eventRecord = {
-                      phase: { isInitialization: false },
-                      event: {
-                        section: "contracts",
-                        method: "ContractEmitted",
-                        data: [contractAddress, eventData],
-                        topics: [draftRequestedTopic], // Add the signature topic
-                      },
-                    };
-
-                    logger.info("Trying with event record structure");
-                    decoded = this.contract.abi.decodeEvent(eventRecord);
-                    logger.info("Approach 2 (with event record) succeeded");
-                  } catch (approach2Error) {
-                    logger.warn("Approach 2 failed:", approach2Error.message);
-
-                    // Approach 3: Try decoding with the contract's event registry
-                    try {
-                      const registry = this.api.registry;
-                      const eventRecord = registry.createType(
-                        "ContractEventData",
-                        eventData
-                      );
-                      decoded = this.contract.abi.decodeEvent(eventRecord);
-                      logger.info("Approach 3 (with registry) succeeded");
-                    } catch (approach3Error) {
-                      logger.error(
-                        "All decoding approaches failed:",
-                        approach3Error.message
-                      );
-                      throw approach1Error; // Throw the original error
-                    }
-                  }
-                }
-
-                if (decoded) {
-                  logger.info("Decoded event structure:", {
-                    event: decoded.event?.identifier,
-                    args: decoded.args,
-                    eventKeys: Object.keys(decoded.event || {}),
-                    argsType: Array.isArray(decoded.args)
-                      ? "array"
-                      : typeof decoded.args,
-                  });
-                }
-
-                if (
-                  decoded &&
-                  decoded.event &&
-                  decoded.event.identifier === "DraftRequested"
-                ) {
-                  logger.info("DraftRequested event successfully decoded!");
-
-                  // Extract the event arguments (handling both array and object format)
-                  const args = decoded.args || decoded.event.args;
-                  const eventInfo = {
-                    name: "DraftRequested",
-                    data: {
-                      requester: Array.isArray(args)
-                        ? args[0].toString()
-                        : args.requester.toString(),
-                      request_id: Array.isArray(args)
-                        ? args[1].toNumber
-                          ? args[1].toNumber()
-                          : parseInt(args[1].toString())
-                        : args.request_id.toNumber
-                        ? args.request_id.toNumber()
-                        : parseInt(args.request_id.toString()),
-                      template_data: Array.isArray(args)
-                        ? args[2].toString()
-                        : args.template_data.toString(),
-                      timestamp: Array.isArray(args)
-                        ? args[3].toNumber
-                          ? args[3].toNumber()
-                          : parseInt(args[3].toString())
-                        : args.timestamp.toNumber
-                        ? args.timestamp.toNumber()
-                        : parseInt(args.timestamp.toString()),
-                    },
-                  };
-
-                  // Process the draft request
-                  this.processDraftRequest(eventInfo.data);
-                }
-              } catch (decodeError) {
-                const abiError = {
-                  message: decodeError.message,
-                  type: "ABI_DECODE_FAILURE",
-                  eventLength: eventBytes.length,
-                  timestamp: Date.now(),
-                };
-
-                logger.error("Failed to decode event with ABI:", abiError);
-
-                // Store ABI failure for debugging
-                this.recordFailedEvent({
-                  contractAddress,
-                  eventHex: eventBytes.toHex(),
-                  error: `ABI Decode Failed: ${decodeError.message}`,
-                  timestamp: Date.now(),
-                  reason: "ABI_DECODE_FAILURE",
-                });
-
-                // Fallback: Try to manually parse if it's a DraftRequested event
-                // Look for the signature topic in the event
-                logger.info("Attempting manual event parsing fallback...");
-
-                try {
-                  // Check if this matches our DraftRequested signature topic
-                  const draftRequestedTopic =
-                    "0xa95a60bdaef26fa2156a65a63a4370085b124a2548dd2f66ce72fd4cdffcd75f";
-
-                  // Try to manually parse the hex data
-                  const hexData = eventBytes.toHex();
-                  logger.info("Attempting manual hex parsing:", {
-                    fullHex: hexData,
-                    length: hexData.length,
-                    possibleStructures: {
-                      if_account_based: hexData.slice(0, 66), // First 32 bytes as account
-                      if_event_id: hexData.slice(0, 10), // First 4 bytes as event ID
-                      remaining: hexData.slice(66),
-                    },
-                  });
-
-                  // Look for DraftRequested event pattern
-                  // Based on the ABI, DraftRequested has: requester (AccountId), request_id (u64), template_data (String), timestamp (u64)
-
-                  // Analyze event patterns we're seeing:
-                  // - 40-byte events: Account ID (32 bytes) + extra data (8 bytes)
-                  // - 9-byte events: Shorter data, likely request_id + flags
-
-                  if (hexData.length === 82) {
-                    // 40 bytes = 80 hex chars + "0x" prefix
-                    logger.info(
-                      "Processing 40-byte event (likely contains AccountId)"
-                    );
-                    const accountBytes = hexData.slice(2, 66); // First 32 bytes as account
-                    const extraData = hexData.slice(66); // Remaining 8 bytes
-                    logger.info("Event analysis:", {
-                      accountHex: "0x" + accountBytes,
-                      extraDataHex: "0x" + extraData,
-                      extraDataDecimal: parseInt(extraData, 16),
-                    });
-                  } else if (hexData.length === 20) {
-                    // 9 bytes = 18 hex chars + "0x" prefix
-                    logger.info(
-                      "Processing 9-byte event (likely request metadata)"
-                    );
-                    const possibleRequestId = hexData.slice(2, 10); // First 4 bytes
-                    const possibleFlags = hexData.slice(10); // Remaining 5 bytes
-                    logger.info("Short event analysis:", {
-                      possibleRequestIdHex: "0x" + possibleRequestId,
-                      possibleRequestIdDecimal: parseInt(possibleRequestId, 16),
-                      possibleFlagsHex: "0x" + possibleFlags,
-                      possibleFlagsDecimal: parseInt(possibleFlags, 16),
-                    });
-                  }
-
-                  if (hexData.includes("7b22")) {
-                    // Look for JSON start {"
-                    logger.info(
-                      "Found potential JSON data in hex, attempting to extract..."
-                    );
-
-                    // Try to find and decode JSON from the hex data
-                    let jsonStart = hexData.indexOf("7b22"); // {"
-                    if (jsonStart !== -1) {
-                      // Look for JSON end - try multiple patterns
-                      let jsonHex = hexData.slice(jsonStart);
-                      let jsonEnd = -1;
-
-                      // Try different JSON end patterns
-                      const endPatterns = ["7d22", "7d7d", "7d"]; // }", }}, }
-                      for (const pattern of endPatterns) {
-                        const foundEnd = jsonHex.lastIndexOf(pattern);
-                        if (foundEnd > 0) {
-                          jsonEnd = foundEnd + pattern.length;
-                          break;
-                        }
-                      }
-
-                      // If no clear end found, try to find reasonable cutoff
-                      if (jsonEnd === -1) {
-                        // Look for end of data or timestamp patterns
-                        const possibleEnds = [
-                          jsonHex.indexOf("d27aafa897010000"), // timestamp pattern
-                          jsonHex.indexOf("0000000000000000"), // null padding
-                          jsonHex.length, // full data
-                        ].filter((end) => end > 0);
-
-                        if (possibleEnds.length > 0) {
-                          jsonEnd = Math.min(...possibleEnds);
-                        }
-                      }
-
-                      if (jsonEnd > 4) {
-                        jsonHex = jsonHex.slice(0, jsonEnd);
-                        try {
-                          const jsonStr = Buffer.from(jsonHex, "hex").toString(
-                            "utf8"
-                          );
-                          logger.info("Extracted JSON from event:", {
-                            rawHex: jsonHex,
-                            jsonString: jsonStr,
-                            length: jsonStr.length,
-                          });
-
-                          // Clean up any trailing nulls or garbage
-                          let cleanJsonStr = jsonStr.replace(/\0+$/, "").trim();
-
-                          // Remove any trailing non-JSON characters after the last }
-                          const lastBraceIndex = cleanJsonStr.lastIndexOf("}");
-                          if (
-                            lastBraceIndex !== -1 &&
-                            lastBraceIndex < cleanJsonStr.length - 1
-                          ) {
-                            cleanJsonStr = cleanJsonStr.substring(
-                              0,
-                              lastBraceIndex + 1
-                            );
-                            logger.info("Trimmed trailing garbage from JSON:", {
-                              original: jsonStr.length,
-                              cleaned: cleanJsonStr.length,
-                              trimmed: jsonStr.substring(lastBraceIndex + 1),
-                            });
-                          }
-
-                          // If we found real JSON, try to process it
-                          const parsedData = JSON.parse(cleanJsonStr);
-                          logger.info(
-                            "Successfully parsed event JSON data!",
-                            parsedData
-                          );
-
-                          // Extract request_id from the hex structure
-                          // Based on the pattern: AccountId(32) + request_id(8) + timestamp(8) + length(4) + data
-                          const afterAccount = hexData.slice(66); // Skip 32-byte account
-                          const requestIdHex = afterAccount.slice(0, 16); // Next 8 bytes
-                          let requestId = parseInt(requestIdHex, 16);
-
-                          // Ensure request_id is within safe integer range for blockchain submission
-                          if (requestId > Number.MAX_SAFE_INTEGER) {
-                            requestId = Math.floor(requestId / 1000000); // Scale down to safe range
-                            logger.warn("Request ID too large, scaled down:", {
-                              original: parseInt(requestIdHex, 16),
-                              scaled: requestId,
-                            });
-                          }
-
-                          // Create a real event from the parsed data
-                          const realEventData = {
-                            requester: contractAddress,
-                            request_id: requestId || Date.now(),
-                            template_data: cleanJsonStr,
-                            timestamp: Date.now(),
-                          };
-
-                          logger.info(
-                            "Processing REAL draft request from blockchain event!",
-                            realEventData
-                          );
-                          this.processDraftRequest(realEventData);
-                          return; // Exit fallback, we found real data
-                        } catch (jsonError) {
-                          logger.warn(
-                            "Failed to parse extracted JSON:",
-                            jsonError.message,
-                            "Raw hex:",
-                            jsonHex
-                          );
-                        }
-                      }
-                    }
-                  }
-
-                  const errorMessage = `Event processing failed: ABI decoding failed and no JSON data found in event. Raw hex: ${hexData.slice(
-                    0,
-                    100
-                  )}...`;
-
-                  logger.error("Complete event processing failure:", {
-                    error: errorMessage,
-                    eventLength: hexData.length,
-                    contractAddress: contractAddress,
-                    hasJsonMarker: hexData.includes("7b22"),
-                    timestamp: Date.now(),
-                  });
-
-                  // Store failed event for debugging and UI display
-                  this.recordFailedEvent({
-                    contractAddress,
-                    eventHex: hexData,
-                    error: errorMessage,
-                    timestamp: Date.now(),
-                    reason: "ABI_DECODE_AND_JSON_PARSE_FAILED",
-                  });
-                } catch (fallbackError) {
-                  logger.error("Fallback parsing also failed:", fallbackError);
-                }
-              }
-            }
-          } catch (eventError) {
-            const generalError = {
-              message: eventError.message,
-              stack: eventError.stack,
-              type: "GENERAL_EVENT_PROCESSING_ERROR",
-              timestamp: Date.now(),
-            };
-
-            logger.error(
-              "Error processing ContractEmitted event:",
-              generalError
-            );
-
-            // Store general processing failure
-            this.recordFailedEvent({
-              contractAddress: contractAddress || "unknown",
-              eventHex: "unknown - error occurred before hex extraction",
-              error: `General Processing Error: ${eventError.message}`,
-              timestamp: Date.now(),
-              reason: "GENERAL_PROCESSING_ERROR",
-            });
+          if (contractAddress.toString() === process.env.CONTRACT_ADDRESS) {
+            this.handleContractEvent(eventBytes);
           }
         }
       });
@@ -689,6 +293,42 @@ class DraftService {
 
     // Store the unsubscribe function for cleanup
     this.eventUnsubscriber = unsub;
+  }
+
+  handleContractEvent(eventBytes) {
+    logger.info("Event received from contract, attempting to decode...");
+
+    try {
+      // First attempt: Use custom ABI decoder
+      const decoded = this.abiDecoder.decodeContractEvent(eventBytes);
+
+      logger.info("✅ Event decoded successfully", {
+        eventType: decoded.event.identifier,
+        hasArgs: !!decoded.event.args,
+      });
+
+      // Process DraftRequested events
+      if (decoded.event.identifier.includes("DraftRequested")) {
+        logger.info("Processing DraftRequested event");
+        this.processDraftRequest(decoded.event.args);
+      } else {
+        logger.info(`Received ${decoded.event.identifier} event`);
+      }
+    } catch (decodeError) {
+      logger.error("Event decoding failed:", {
+        error: decodeError.message,
+        eventLength: eventBytes.length,
+      });
+
+      // Record the failed event for debugging
+      this.recordFailedEvent({
+        contractAddress: process.env.CONTRACT_ADDRESS,
+        eventHex: eventBytes.toHex ? eventBytes.toHex() : "unavailable",
+        error: `ABI Decode Failed: ${decodeError.message}`,
+        timestamp: Date.now(),
+        reason: "ABI_DECODE_FAILURE",
+      });
+    }
   }
 
   recordFailedEvent(failedEvent) {
