@@ -39,7 +39,7 @@ cp env.example .env
 ```env
 # Substrate/Polkadot Network Configuration
 SUBSTRATE_WS_URL=ws://localhost:9944
-CONTRACT_ADDRESS=5C6u9c9e1RdzzdDAGQRKZBhsiAdMK1BCsy8qTsZUY2YhNQqS
+CONTRACT_ADDRESS=5FuYtBJ7FneqAEbT46zDPBK6WvaHyR1QxGpV917apN7SqAqM
 
 # Document Storage Configuration
 DOCUMENTS_OUTPUT_DIR=./generated-documents

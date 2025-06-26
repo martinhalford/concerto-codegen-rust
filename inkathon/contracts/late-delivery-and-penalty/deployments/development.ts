@@ -1,5 +1,5 @@
 // Development network deployment configuration
-export const address = "5HCaU8WCTnuRhSv7UnEhzzfWSSgqohtjgcr5PiwheiYs3HY3"
+export const address = "5FuYtBJ7FneqAEbT46zDPBK6WvaHyR1QxGpV917apN7SqAqM"
 
 // Optional: Add deployment metadata
 export const deploymentInfo = {

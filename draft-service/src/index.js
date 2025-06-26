@@ -46,6 +46,8 @@ class DraftService {
     this.documentsDir =
       process.env.DOCUMENTS_OUTPUT_DIR || "./generated-documents";
     this.outputFormat = process.env.OUTPUT_FORMAT || "md"; // 'md' or 'pdf'
+    this.failedEvents = []; // Store failed events for debugging and UI display
+    this.maxFailedEvents = 50; // Limit stored failed events
   }
 
   async initialize() {
@@ -73,6 +75,18 @@ class DraftService {
 
       // Initialize contract
       const contractAbi = this.loadContractAbi();
+
+      // Debug the loaded ABI
+      logger.info("Loaded ABI structure:", {
+        hasSpec: !!contractAbi.spec,
+        hasEvents: !!contractAbi.spec?.events,
+        eventsCount: contractAbi.spec?.events?.length || 0,
+        eventNames: contractAbi.spec?.events?.map((e) => e.label) || [],
+        draftRequestedEvent: contractAbi.spec?.events?.find(
+          (e) => e.label === "DraftRequested"
+        ),
+      });
+
       this.contract = new ContractPromise(
         this.api,
         contractAbi,
@@ -137,15 +151,66 @@ class DraftService {
   }
 
   async initializeTemplate() {
-    try {
-      const templatePath = path.resolve(process.env.TEMPLATE_ARCHIVE_PATH);
+    const templatePath = path.resolve(process.env.TEMPLATE_ARCHIVE_PATH);
 
-      this.template = await Template.fromDirectory(templatePath);
-      this.templateProcessor = new TemplateArchiveProcessor(this.template);
-      logger.info(`Template loaded from: ${templatePath}`);
-    } catch (error) {
-      logger.error("Failed to initialize template:", error);
-      throw error;
+    // Try multiple initialization approaches
+    const initMethods = [
+      // Method 1: Basic initialization with timeout
+      async () => {
+        logger.info(
+          "Attempting template initialization (method 1: basic with timeout)..."
+        );
+        return await Promise.race([
+          Template.fromDirectory(templatePath),
+          new Promise((_, reject) =>
+            setTimeout(
+              () =>
+                reject(new Error("Template initialization timeout after 15s")),
+              15000
+            )
+          ),
+        ]);
+      },
+
+      // Method 2: Try with offline option
+      async () => {
+        logger.info(
+          "Attempting template initialization (method 2: offline mode)..."
+        );
+        return await Template.fromDirectory(templatePath, { offline: true });
+      },
+
+      // Method 3: Try with no external model updates
+      async () => {
+        logger.info(
+          "Attempting template initialization (method 3: skip external models)..."
+        );
+        return await Template.fromDirectory(templatePath, {
+          skipUpdateExternalModels: true,
+        });
+      },
+    ];
+
+    for (let i = 0; i < initMethods.length; i++) {
+      try {
+        this.template = await initMethods[i]();
+        this.templateProcessor = new TemplateArchiveProcessor(this.template);
+        logger.info(
+          `Template loaded from: ${templatePath} (method ${i + 1} successful)`
+        );
+        return; // Success, exit the function
+      } catch (error) {
+        logger.warn(
+          `Template initialization method ${i + 1} failed:`,
+          error.message
+        );
+        if (i === initMethods.length - 1) {
+          // Last method failed, throw error
+          logger.error("All template initialization methods failed");
+          throw error;
+        }
+        // Continue to next method
+      }
     }
   }
 
@@ -173,6 +238,31 @@ class DraftService {
     }
   }
 
+  async stop() {
+    if (!this.isRunning) {
+      return;
+    }
+
+    try {
+      // Cleanup event subscription
+      if (this.eventUnsubscriber) {
+        this.eventUnsubscriber();
+        this.eventUnsubscriber = null;
+      }
+
+      // Close API connection
+      if (this.api) {
+        await this.api.disconnect();
+        this.api = null;
+      }
+
+      this.isRunning = false;
+      logger.info("Draft Service stopped successfully");
+    } catch (error) {
+      logger.error("Error stopping Draft Service:", error);
+    }
+  }
+
   async listenForEvents() {
     logger.info("Starting to listen for DraftRequested events...");
 
@@ -181,32 +271,140 @@ class DraftService {
       events.forEach((record) => {
         const { event, phase } = record;
 
-        logger.debug(`Event received: ${event.section}.${event.method}`);
-
         // Check if this is a contract event
         if (
           event.section === "contracts" &&
           event.method === "ContractEmitted"
         ) {
-          logger.debug("ContractEmitted event detected");
-
           try {
             // Extract contract address and data from the event
             const eventData = event.data;
             const contractAddress = eventData[0].toString();
             const eventBytes = eventData[1];
 
-            logger.debug("Contract address:", contractAddress);
-            logger.debug("Event bytes:", eventBytes.toString());
-
             // Check if this event is from our contract
             if (contractAddress === process.env.CONTRACT_ADDRESS) {
               logger.info("Event from our contract, attempting to decode...");
 
+              // Debug the complete event structure
+              logger.info("Complete event structure:", {
+                section: event.section,
+                method: event.method,
+                data: event.data.map((d) => d.toString()),
+                topics: event.topics?.map((t) => t.toString()) || "no topics",
+              });
+
+              // Debug the raw event data
+              logger.info("Raw event data:", {
+                contractAddress: contractAddress,
+                eventBytesType: typeof eventBytes,
+                eventBytesLength: eventBytes.length,
+                eventBytesString: eventBytes.toString(),
+                eventBytesHex: eventBytes.toHex
+                  ? eventBytes.toHex()
+                  : "no toHex method",
+              });
+
               // Try to decode using the contract ABI
               try {
-                const decoded = this.contract.abi.decodeEvent(eventBytes);
-                logger.debug("Decoded event:", decoded);
+                // Debug the ABI structure
+                logger.info("ABI debugging info:", {
+                  hasAbi: !!this.contract.abi,
+                  abiEvents: this.contract.abi?.events
+                    ? Object.keys(this.contract.abi.events)
+                    : "no events",
+                  decodeEventMethod: typeof this.contract.abi.decodeEvent,
+                  eventBytesType: typeof eventBytes,
+                  eventBytesConstructor: eventBytes.constructor.name,
+                  eventBytesLength: eventBytes.length,
+                });
+
+                // Check if eventBytes needs conversion
+                let eventData = eventBytes;
+                if (typeof eventBytes.toU8a === "function") {
+                  eventData = eventBytes.toU8a();
+                  logger.info("Converted eventBytes to Uint8Array");
+                }
+
+                logger.info("Calling decodeEvent with data:", {
+                  dataType: typeof eventData,
+                  dataConstructor: eventData.constructor.name,
+                  dataLength: eventData.length,
+                  firstFewBytes: Array.from(eventData.slice(0, 10)),
+                  fullHex: Array.from(eventData)
+                    .map((b) => b.toString(16).padStart(2, "0"))
+                    .join(""),
+                });
+
+                // Try to manually parse the hex data to understand the structure
+                logger.info("Manual hex analysis:", {
+                  originalHex: eventBytes.toHex(),
+                  possibleEventId: eventBytes.toHex().slice(0, 8),
+                  remainingData: eventBytes.toHex().slice(8),
+                });
+
+                // Try multiple decoding approaches
+                let decoded;
+
+                // Approach 1: Direct decodeEvent call
+                try {
+                  decoded = this.contract.abi.decodeEvent(eventData);
+                  logger.info("Approach 1 (direct decodeEvent) succeeded");
+                } catch (approach1Error) {
+                  logger.warn("Approach 1 failed:", approach1Error.message);
+
+                  // Approach 2: Try finding the event by signature topic
+                  try {
+                    // The DraftRequested signature topic
+                    const draftRequestedTopic =
+                      "0xa95a60bdaef26fa2156a65a63a4370085b124a2548dd2f66ce72fd4cdffcd75f";
+
+                    // Create a proper event record structure
+                    const eventRecord = {
+                      phase: { isInitialization: false },
+                      event: {
+                        section: "contracts",
+                        method: "ContractEmitted",
+                        data: [contractAddress, eventData],
+                        topics: [draftRequestedTopic], // Add the signature topic
+                      },
+                    };
+
+                    logger.info("Trying with event record structure");
+                    decoded = this.contract.abi.decodeEvent(eventRecord);
+                    logger.info("Approach 2 (with event record) succeeded");
+                  } catch (approach2Error) {
+                    logger.warn("Approach 2 failed:", approach2Error.message);
+
+                    // Approach 3: Try decoding with the contract's event registry
+                    try {
+                      const registry = this.api.registry;
+                      const eventRecord = registry.createType(
+                        "ContractEventData",
+                        eventData
+                      );
+                      decoded = this.contract.abi.decodeEvent(eventRecord);
+                      logger.info("Approach 3 (with registry) succeeded");
+                    } catch (approach3Error) {
+                      logger.error(
+                        "All decoding approaches failed:",
+                        approach3Error.message
+                      );
+                      throw approach1Error; // Throw the original error
+                    }
+                  }
+                }
+
+                if (decoded) {
+                  logger.info("Decoded event structure:", {
+                    event: decoded.event?.identifier,
+                    args: decoded.args,
+                    eventKeys: Object.keys(decoded.event || {}),
+                    argsType: Array.isArray(decoded.args)
+                      ? "array"
+                      : typeof decoded.args,
+                  });
+                }
 
                 if (
                   decoded &&
@@ -215,96 +413,275 @@ class DraftService {
                 ) {
                   logger.info("DraftRequested event successfully decoded!");
 
-                  // Extract the event arguments
-                  const args = decoded.args;
+                  // Extract the event arguments (handling both array and object format)
+                  const args = decoded.args || decoded.event.args;
                   const eventInfo = {
                     name: "DraftRequested",
                     data: {
-                      requester: args[0].toString(),
-                      request_id: args[1].toNumber
-                        ? args[1].toNumber()
-                        : parseInt(args[1].toString()),
-                      template_data: args[2].toString(),
-                      timestamp: args[3].toNumber
-                        ? args[3].toNumber()
-                        : parseInt(args[3].toString()),
+                      requester: Array.isArray(args)
+                        ? args[0].toString()
+                        : args.requester.toString(),
+                      request_id: Array.isArray(args)
+                        ? args[1].toNumber
+                          ? args[1].toNumber()
+                          : parseInt(args[1].toString())
+                        : args.request_id.toNumber
+                        ? args.request_id.toNumber()
+                        : parseInt(args.request_id.toString()),
+                      template_data: Array.isArray(args)
+                        ? args[2].toString()
+                        : args.template_data.toString(),
+                      timestamp: Array.isArray(args)
+                        ? args[3].toNumber
+                          ? args[3].toNumber()
+                          : parseInt(args[3].toString())
+                        : args.timestamp.toNumber
+                        ? args.timestamp.toNumber()
+                        : parseInt(args.timestamp.toString()),
                     },
                   };
 
-                  logger.debug("Extracted event data:", eventInfo.data);
-
                   // Process the draft request
                   this.processDraftRequest(eventInfo.data);
-                } else if (decoded && decoded.event) {
-                  logger.debug(
-                    `Decoded event is ${decoded.event.identifier}, not DraftRequested`
-                  );
-                } else {
-                  logger.warn(
-                    "Failed to decode event or no event identifier found"
-                  );
                 }
               } catch (decodeError) {
-                logger.error("Failed to decode event with ABI:", decodeError);
+                const abiError = {
+                  message: decodeError.message,
+                  type: "ABI_DECODE_FAILURE",
+                  eventLength: eventBytes.length,
+                  timestamp: Date.now(),
+                };
 
-                // Fallback: Try manual hex parsing for debugging
-                const hexData = eventBytes.toString();
-                logger.debug("Raw hex data for manual parsing:", hexData);
+                logger.error("Failed to decode event with ABI:", abiError);
 
-                if (hexData.startsWith("0x")) {
-                  try {
-                    // Remove 0x prefix and convert to buffer
-                    const buffer = Buffer.from(hexData.slice(2), "hex");
-                    const bufferStr = buffer.toString("utf8");
+                // Store ABI failure for debugging
+                this.recordFailedEvent({
+                  contractAddress,
+                  eventHex: eventBytes.toHex(),
+                  error: `ABI Decode Failed: ${decodeError.message}`,
+                  timestamp: Date.now(),
+                  reason: "ABI_DECODE_FAILURE",
+                });
 
-                    logger.debug(
-                      "Buffer as UTF8 string (first 200 chars):",
-                      bufferStr.substring(0, 200)
+                // Fallback: Try to manually parse if it's a DraftRequested event
+                // Look for the signature topic in the event
+                logger.info("Attempting manual event parsing fallback...");
+
+                try {
+                  // Check if this matches our DraftRequested signature topic
+                  const draftRequestedTopic =
+                    "0xa95a60bdaef26fa2156a65a63a4370085b124a2548dd2f66ce72fd4cdffcd75f";
+
+                  // Try to manually parse the hex data
+                  const hexData = eventBytes.toHex();
+                  logger.info("Attempting manual hex parsing:", {
+                    fullHex: hexData,
+                    length: hexData.length,
+                    possibleStructures: {
+                      if_account_based: hexData.slice(0, 66), // First 32 bytes as account
+                      if_event_id: hexData.slice(0, 10), // First 4 bytes as event ID
+                      remaining: hexData.slice(66),
+                    },
+                  });
+
+                  // Look for DraftRequested event pattern
+                  // Based on the ABI, DraftRequested has: requester (AccountId), request_id (u64), template_data (String), timestamp (u64)
+
+                  // Analyze event patterns we're seeing:
+                  // - 40-byte events: Account ID (32 bytes) + extra data (8 bytes)
+                  // - 9-byte events: Shorter data, likely request_id + flags
+
+                  if (hexData.length === 82) {
+                    // 40 bytes = 80 hex chars + "0x" prefix
+                    logger.info(
+                      "Processing 40-byte event (likely contains AccountId)"
                     );
-
-                    // Look for JSON patterns
-                    const jsonMatch = bufferStr.match(/\{.*\}/);
-                    if (jsonMatch) {
-                      const potentialJson = jsonMatch[0];
-                      logger.debug("Found potential JSON:", potentialJson);
-
-                      try {
-                        JSON.parse(potentialJson);
-                        logger.info(
-                          "Successfully found valid JSON in hex data!"
-                        );
-
-                        // Create a mock event for processing
-                        const fallbackEventData = {
-                          requester: contractAddress,
-                          request_id: Date.now(),
-                          template_data: potentialJson,
-                          timestamp: Date.now(),
-                        };
-
-                        this.processDraftRequest(fallbackEventData);
-                      } catch (jsonError) {
-                        logger.warn(
-                          "Found JSON-like data but it's not valid JSON:",
-                          jsonError.message
-                        );
-                      }
-                    } else {
-                      logger.warn("No JSON pattern found in buffer string");
-                    }
-                  } catch (bufferError) {
-                    logger.error(
-                      "Failed to parse hex data as buffer:",
-                      bufferError
+                    const accountBytes = hexData.slice(2, 66); // First 32 bytes as account
+                    const extraData = hexData.slice(66); // Remaining 8 bytes
+                    logger.info("Event analysis:", {
+                      accountHex: "0x" + accountBytes,
+                      extraDataHex: "0x" + extraData,
+                      extraDataDecimal: parseInt(extraData, 16),
+                    });
+                  } else if (hexData.length === 20) {
+                    // 9 bytes = 18 hex chars + "0x" prefix
+                    logger.info(
+                      "Processing 9-byte event (likely request metadata)"
                     );
+                    const possibleRequestId = hexData.slice(2, 10); // First 4 bytes
+                    const possibleFlags = hexData.slice(10); // Remaining 5 bytes
+                    logger.info("Short event analysis:", {
+                      possibleRequestIdHex: "0x" + possibleRequestId,
+                      possibleRequestIdDecimal: parseInt(possibleRequestId, 16),
+                      possibleFlagsHex: "0x" + possibleFlags,
+                      possibleFlagsDecimal: parseInt(possibleFlags, 16),
+                    });
                   }
+
+                  if (hexData.includes("7b22")) {
+                    // Look for JSON start {"
+                    logger.info(
+                      "Found potential JSON data in hex, attempting to extract..."
+                    );
+
+                    // Try to find and decode JSON from the hex data
+                    let jsonStart = hexData.indexOf("7b22"); // {"
+                    if (jsonStart !== -1) {
+                      // Look for JSON end - try multiple patterns
+                      let jsonHex = hexData.slice(jsonStart);
+                      let jsonEnd = -1;
+
+                      // Try different JSON end patterns
+                      const endPatterns = ["7d22", "7d7d", "7d"]; // }", }}, }
+                      for (const pattern of endPatterns) {
+                        const foundEnd = jsonHex.lastIndexOf(pattern);
+                        if (foundEnd > 0) {
+                          jsonEnd = foundEnd + pattern.length;
+                          break;
+                        }
+                      }
+
+                      // If no clear end found, try to find reasonable cutoff
+                      if (jsonEnd === -1) {
+                        // Look for end of data or timestamp patterns
+                        const possibleEnds = [
+                          jsonHex.indexOf("d27aafa897010000"), // timestamp pattern
+                          jsonHex.indexOf("0000000000000000"), // null padding
+                          jsonHex.length, // full data
+                        ].filter((end) => end > 0);
+
+                        if (possibleEnds.length > 0) {
+                          jsonEnd = Math.min(...possibleEnds);
+                        }
+                      }
+
+                      if (jsonEnd > 4) {
+                        jsonHex = jsonHex.slice(0, jsonEnd);
+                        try {
+                          const jsonStr = Buffer.from(jsonHex, "hex").toString(
+                            "utf8"
+                          );
+                          logger.info("Extracted JSON from event:", {
+                            rawHex: jsonHex,
+                            jsonString: jsonStr,
+                            length: jsonStr.length,
+                          });
+
+                          // Clean up any trailing nulls or garbage
+                          let cleanJsonStr = jsonStr.replace(/\0+$/, "").trim();
+
+                          // Remove any trailing non-JSON characters after the last }
+                          const lastBraceIndex = cleanJsonStr.lastIndexOf("}");
+                          if (
+                            lastBraceIndex !== -1 &&
+                            lastBraceIndex < cleanJsonStr.length - 1
+                          ) {
+                            cleanJsonStr = cleanJsonStr.substring(
+                              0,
+                              lastBraceIndex + 1
+                            );
+                            logger.info("Trimmed trailing garbage from JSON:", {
+                              original: jsonStr.length,
+                              cleaned: cleanJsonStr.length,
+                              trimmed: jsonStr.substring(lastBraceIndex + 1),
+                            });
+                          }
+
+                          // If we found real JSON, try to process it
+                          const parsedData = JSON.parse(cleanJsonStr);
+                          logger.info(
+                            "Successfully parsed event JSON data!",
+                            parsedData
+                          );
+
+                          // Extract request_id from the hex structure
+                          // Based on the pattern: AccountId(32) + request_id(8) + timestamp(8) + length(4) + data
+                          const afterAccount = hexData.slice(66); // Skip 32-byte account
+                          const requestIdHex = afterAccount.slice(0, 16); // Next 8 bytes
+                          let requestId = parseInt(requestIdHex, 16);
+
+                          // Ensure request_id is within safe integer range for blockchain submission
+                          if (requestId > Number.MAX_SAFE_INTEGER) {
+                            requestId = Math.floor(requestId / 1000000); // Scale down to safe range
+                            logger.warn("Request ID too large, scaled down:", {
+                              original: parseInt(requestIdHex, 16),
+                              scaled: requestId,
+                            });
+                          }
+
+                          // Create a real event from the parsed data
+                          const realEventData = {
+                            requester: contractAddress,
+                            request_id: requestId || Date.now(),
+                            template_data: cleanJsonStr,
+                            timestamp: Date.now(),
+                          };
+
+                          logger.info(
+                            "Processing REAL draft request from blockchain event!",
+                            realEventData
+                          );
+                          this.processDraftRequest(realEventData);
+                          return; // Exit fallback, we found real data
+                        } catch (jsonError) {
+                          logger.warn(
+                            "Failed to parse extracted JSON:",
+                            jsonError.message,
+                            "Raw hex:",
+                            jsonHex
+                          );
+                        }
+                      }
+                    }
+                  }
+
+                  const errorMessage = `Event processing failed: ABI decoding failed and no JSON data found in event. Raw hex: ${hexData.slice(
+                    0,
+                    100
+                  )}...`;
+
+                  logger.error("Complete event processing failure:", {
+                    error: errorMessage,
+                    eventLength: hexData.length,
+                    contractAddress: contractAddress,
+                    hasJsonMarker: hexData.includes("7b22"),
+                    timestamp: Date.now(),
+                  });
+
+                  // Store failed event for debugging and UI display
+                  this.recordFailedEvent({
+                    contractAddress,
+                    eventHex: hexData,
+                    error: errorMessage,
+                    timestamp: Date.now(),
+                    reason: "ABI_DECODE_AND_JSON_PARSE_FAILED",
+                  });
+                } catch (fallbackError) {
+                  logger.error("Fallback parsing also failed:", fallbackError);
                 }
               }
-            } else {
-              logger.debug(`Event from different contract: ${contractAddress}`);
             }
           } catch (eventError) {
-            logger.error("Error processing ContractEmitted event:", eventError);
+            const generalError = {
+              message: eventError.message,
+              stack: eventError.stack,
+              type: "GENERAL_EVENT_PROCESSING_ERROR",
+              timestamp: Date.now(),
+            };
+
+            logger.error(
+              "Error processing ContractEmitted event:",
+              generalError
+            );
+
+            // Store general processing failure
+            this.recordFailedEvent({
+              contractAddress: contractAddress || "unknown",
+              eventHex: "unknown - error occurred before hex extraction",
+              error: `General Processing Error: ${eventError.message}`,
+              timestamp: Date.now(),
+              reason: "GENERAL_PROCESSING_ERROR",
+            });
           }
         }
       });
@@ -314,7 +691,25 @@ class DraftService {
     this.eventUnsubscriber = unsub;
   }
 
-  // Legacy methods removed - functionality integrated into listenForEvents()
+  recordFailedEvent(failedEvent) {
+    // Add timestamp and unique ID
+    const eventRecord = {
+      id: `failed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      ...failedEvent,
+    };
+
+    // Add to beginning of array
+    this.failedEvents.unshift(eventRecord);
+
+    // Trim to max size
+    if (this.failedEvents.length > this.maxFailedEvents) {
+      this.failedEvents = this.failedEvents.slice(0, this.maxFailedEvents);
+    }
+
+    logger.warn(
+      `Recorded failed event ${eventRecord.id}. Total failed events: ${this.failedEvents.length}`
+    );
+  }
 
   async processDraftRequest(eventData) {
     const { requester, request_id, template_data, timestamp } = eventData;
@@ -324,31 +719,8 @@ class DraftService {
       const templateModelData = JSON.parse(template_data);
 
       // Extract format preference from template data, fallback to env variable
-      const requestedFormat =
-        templateModelData._outputFormat || this.outputFormat;
-
-      // Remove the format preference from template data before processing
-      // Use JSON stringify/parse to ensure clean object without prototype chain issues
-      const cleanTemplateDataString = JSON.stringify(
-        templateModelData,
-        (key, value) => {
-          if (key === "_outputFormat") {
-            return undefined; // This removes the key entirely
-          }
-          return value;
-        }
-      );
-      const cleanTemplateData = JSON.parse(cleanTemplateDataString);
-
-      logger.debug(
-        "Original template data:",
-        JSON.stringify(templateModelData, null, 2)
-      );
-      logger.debug(
-        "Cleaned template data:",
-        JSON.stringify(cleanTemplateData, null, 2)
-      );
-      logger.debug("Requested format:", requestedFormat);
+      const { _outputFormat, ...cleanTemplateData } = templateModelData;
+      const requestedFormat = _outputFormat || this.outputFormat;
 
       logger.info(
         `Processing draft request ${request_id} from ${requester} (format: ${requestedFormat})`
@@ -420,12 +792,21 @@ class DraftService {
 
   async submitDraftResult(requestId, documentUrl) {
     try {
+      // Add small delay to prevent transaction conflicts
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Get current nonce to prevent transaction conflicts
+      const nonce = await this.api.rpc.system.accountNextIndex(
+        this.serviceAccount.address
+      );
+
       const tx = this.contract.tx.submitDraftResult(
         {
           gasLimit: this.api.registry.createType("WeightV2", {
             refTime: 30000000000,
             proofSize: 1000000,
           }),
+          nonce: nonce.toNumber(),
         },
         requestId,
         documentUrl
@@ -452,12 +833,21 @@ class DraftService {
 
   async submitDraftError(requestId, errorMessage) {
     try {
+      // Add small delay to prevent transaction conflicts
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Get current nonce to prevent transaction conflicts
+      const nonce = await this.api.rpc.system.accountNextIndex(
+        this.serviceAccount.address
+      );
+
       const tx = this.contract.tx.submitDraftError(
         {
           gasLimit: this.api.registry.createType("WeightV2", {
             refTime: 30000000000,
             proofSize: 1000000,
           }),
+          nonce: nonce.toNumber(),
         },
         requestId,
         errorMessage
@@ -525,6 +915,47 @@ class DraftService {
         },
         documentsDir: this.documentsDir,
         lastActivity: new Date().toISOString(),
+        stats: {
+          totalFailedEvents: this.failedEvents.length,
+          recentFailures: this.failedEvents.slice(0, 5).map((e) => ({
+            id: e.id,
+            reason: e.reason,
+            timestamp: new Date(e.timestamp).toISOString(),
+            error: e.error.slice(0, 100) + "...",
+          })),
+        },
+      });
+    });
+
+    // Failed events endpoint for debugging
+    app.get("/failed-events", (req, res) => {
+      const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+      const offset = parseInt(req.query.offset) || 0;
+
+      const events = this.failedEvents
+        .slice(offset, offset + limit)
+        .map((event) => ({
+          ...event,
+          timestamp: new Date(event.timestamp).toISOString(),
+          eventHex: event.eventHex.slice(0, 200) + "...", // Truncate for display
+        }));
+
+      res.json({
+        total: this.failedEvents.length,
+        limit,
+        offset,
+        events,
+      });
+    });
+
+    // Clear failed events endpoint
+    app.delete("/failed-events", (req, res) => {
+      const clearedCount = this.failedEvents.length;
+      this.failedEvents = [];
+      logger.info(`Cleared ${clearedCount} failed events via API`);
+      res.json({
+        message: `Cleared ${clearedCount} failed events`,
+        timestamp: new Date().toISOString(),
       });
     });
 
@@ -533,12 +964,8 @@ class DraftService {
       const filename = req.params.filename;
       const filepath = path.join(this.documentsDir, filename);
 
-      // Security check - ensure filename doesn't contain path traversal
-      if (
-        filename.includes("..") ||
-        filename.includes("/") ||
-        filename.includes("\\")
-      ) {
+      // Security check - prevent path traversal
+      if (filename.includes("..") || filename.includes(path.sep)) {
         return res.status(400).json({ error: "Invalid filename" });
       }
 
@@ -619,16 +1046,32 @@ class DraftService {
 
 // Start the service
 async function main() {
-  const service = new DraftService();
+  serviceInstance = new DraftService();
 
   try {
-    await service.start();
+    await serviceInstance.start();
     logger.info("Draft Service is running...");
   } catch (error) {
     logger.error("Failed to start service:", error);
     process.exit(1);
   }
 }
+
+// Global service instance for cleanup
+let serviceInstance = null;
+
+// Handle graceful shutdown
+const gracefulShutdown = async (signal) => {
+  logger.info(`Received ${signal}, shutting down gracefully...`);
+  if (serviceInstance) {
+    await serviceInstance.stop();
+  }
+  process.exit(0);
+};
+
+// Handle process signals
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 // Handle uncaught exceptions
 process.on("uncaughtException", (error) => {

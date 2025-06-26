@@ -60,6 +60,49 @@ const processRequestSchema = z.object({
 type RequestDraftForm = z.infer<typeof requestDraftSchema>
 type ProcessRequestForm = z.infer<typeof processRequestSchema>
 
+// Helper function to safely extract value from contract query result
+const safeExtractValue = (queryResult: any, fallback: any = null) => {
+  try {
+    // If the result is a Rust Result type with Ok/Err
+    if (queryResult && typeof queryResult === 'object') {
+      if ('Ok' in queryResult) {
+        return queryResult.Ok;
+      }
+      if ('Err' in queryResult) {
+        console.warn('Contract query returned error:', queryResult.Err);
+        return fallback;
+      }
+    }
+
+    // For simple values, return as-is
+    return queryResult;
+  } catch (error) {
+    console.warn('Error extracting contract query value:', error);
+    return fallback;
+  }
+};
+
+// Helper function to safely render contract values in JSX
+const safeRenderValue = (value: any, fallback: string = 'N/A') => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  // If it's an object (like a Rust Result), convert to string or show error
+  if (typeof value === 'object') {
+    if ('Err' in value) {
+      return 'Error';
+    }
+    if ('Ok' in value) {
+      return String(value.Ok);
+    }
+    // For other objects, try to convert to string
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+};
+
 export const LateDeliveryContractInteractions: FC = () => {
   const { api, activeAccount, activeSigner } = useInkathon()
   const { contract, address: contractAddress } = useRegisteredContract(ContractIds.LateDeliveryAndPenalty)
@@ -135,14 +178,14 @@ export const LateDeliveryContractInteractions: FC = () => {
       ])
 
       setContractInfo({
-        owner: decodeOutput(owner, contract, 'get_owner').output,
-        isPaused: decodeOutput(isPaused, contract, 'is_paused').output,
-        forceMajeure: decodeOutput(forceMajeure, contract, 'get_force_majeure').output,
-        penaltyDuration: decodeOutput(penaltyDuration, contract, 'get_penalty_duration').output,
-        penaltyPercentage: decodeOutput(penaltyPercentage, contract, 'get_penalty_percentage').output,
-        capPercentage: decodeOutput(capPercentage, contract, 'get_cap_percentage').output,
-        termination: decodeOutput(termination, contract, 'get_termination').output,
-        fractionalPart: decodeOutput(fractionalPart, contract, 'get_fractional_part').output,
+        owner: safeExtractValue(decodeOutput(owner, contract, 'get_owner').output, 'Unknown'),
+        isPaused: safeExtractValue(decodeOutput(isPaused, contract, 'is_paused').output, false),
+        forceMajeure: safeExtractValue(decodeOutput(forceMajeure, contract, 'get_force_majeure').output, false),
+        penaltyDuration: safeExtractValue(decodeOutput(penaltyDuration, contract, 'get_penalty_duration').output, 'N/A'),
+        penaltyPercentage: safeExtractValue(decodeOutput(penaltyPercentage, contract, 'get_penalty_percentage').output, 'N/A'),
+        capPercentage: safeExtractValue(decodeOutput(capPercentage, contract, 'get_cap_percentage').output, 'N/A'),
+        termination: safeExtractValue(decodeOutput(termination, contract, 'get_termination').output, 'N/A'),
+        fractionalPart: safeExtractValue(decodeOutput(fractionalPart, contract, 'get_fractional_part').output, 'N/A'),
       })
     } catch (e) {
       console.error('Error fetching contract info:', e)
@@ -151,8 +194,6 @@ export const LateDeliveryContractInteractions: FC = () => {
       setIsLoadingInfo(false)
     }
   }
-
-
 
   // Fetch generated documents from draft service
   const fetchGeneratedDocuments = async () => {
@@ -594,19 +635,19 @@ export const LateDeliveryContractInteractions: FC = () => {
               </div>
               <div className="flex justify-between">
                 <span>Penalty Duration:</span>
-                <span>{isLoadingInfo ? 'Loading...' : contractInfo.penaltyDuration || 'N/A'}</span>
+                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.penaltyDuration)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Penalty %:</span>
-                <span>{isLoadingInfo ? 'Loading...' : contractInfo.penaltyPercentage || 'N/A'}</span>
+                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.penaltyPercentage)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Cap %:</span>
-                <span>{isLoadingInfo ? 'Loading...' : contractInfo.capPercentage || 'N/A'}</span>
+                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.capPercentage)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Termination:</span>
-                <span>{isLoadingInfo ? 'Loading...' : contractInfo.termination || 'N/A'}</span>
+                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.termination)}</span>
               </div>
             </CardContent>
           </Card>
@@ -999,7 +1040,7 @@ export const LateDeliveryContractInteractions: FC = () => {
                   </div>
                   <div className="flex justify-between text-gray-800">
                     <span>Goods Value:</span>
-                    <span className="font-mono">{processResult.request?.goods_value || 'N/A'}</span>
+                    <span className="font-mono">{safeRenderValue(processResult.request?.goods_value)}</span>
                   </div>
                 </div>
 
@@ -1008,7 +1049,7 @@ export const LateDeliveryContractInteractions: FC = () => {
                   <div className="font-medium text-gray-700 mb-2">Calculated Results:</div>
                   <div className="flex justify-between text-gray-800">
                     <span>Penalty Amount:</span>
-                    <span className="font-mono text-blue-800 font-semibold">{processResult.penalty || 'N/A'}</span>
+                    <span className="font-mono text-blue-800 font-semibold">{safeRenderValue(processResult.penalty)}</span>
                   </div>
                   <div className="flex justify-between text-gray-800">
                     <span>Buyer May Terminate:</span>
@@ -1029,8 +1070,6 @@ export const LateDeliveryContractInteractions: FC = () => {
               </CardContent>
             </Card>
           )}
-
-
 
           {/* Generated Documents */}
           <Card className="lg:col-span-2">
@@ -1173,26 +1212,26 @@ export const LateDeliveryContractInteractions: FC = () => {
                             <div className="font-medium text-gray-700 mb-2">Input Parameters:</div>
                             <div className="flex justify-between text-gray-800">
                               <span>Force Majeure:</span>
-                              <span>{tx.result.request.force_majeure ? 'Yes' : 'No'}</span>
+                              <span>{tx.result.request?.force_majeure ? 'Yes' : 'No'}</span>
                             </div>
                             <div className="flex justify-between text-gray-800">
                               <span>Agreed Delivery:</span>
                               <span className="font-mono text-xs">
-                                {tx.result.request.agreed_delivery ?
+                                {tx.result.request?.agreed_delivery ?
                                   new Date(tx.result.request.agreed_delivery * 1000).toLocaleString() : 'N/A'}
                               </span>
                             </div>
                             <div className="flex justify-between text-gray-800">
                               <span>Delivered At:</span>
                               <span className="font-mono text-xs">
-                                {tx.result.request.delivered_at?.Some ?
+                                {tx.result.request?.delivered_at?.Some ?
                                   new Date(tx.result.request.delivered_at.Some * 1000).toLocaleString() :
                                   'Not delivered'}
                               </span>
                             </div>
                             <div className="flex justify-between text-gray-800">
                               <span>Goods Value:</span>
-                              <span className="font-mono">{tx.result.request.goods_value}</span>
+                              <span className="font-mono">{safeRenderValue(tx.result.request?.goods_value)}</span>
                             </div>
                           </div>
 
@@ -1207,7 +1246,7 @@ export const LateDeliveryContractInteractions: FC = () => {
                                   ? 'text-amber-600'
                                   : 'text-blue-800'
                                 }`}>
-                                {tx.result.penalty || 'N/A'}
+                                {safeRenderValue(tx.result.penalty)}
                               </span>
                             </div>
                             <div className="flex justify-between text-gray-800">
