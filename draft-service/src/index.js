@@ -9,7 +9,6 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const markdownpdf = require("markdown-pdf");
-const { InkAbiDecoder } = require("./abi-decoder");
 
 // Load environment variables
 require("dotenv").config();
@@ -43,7 +42,7 @@ class DraftService {
     this.serviceAccount = null;
     this.template = null;
     this.templateProcessor = null;
-    this.abiDecoder = null; // New ABI decoder instance
+
     this.isRunning = false;
     this.documentsDir =
       process.env.DOCUMENTS_OUTPUT_DIR || "./generated-documents";
@@ -95,10 +94,6 @@ class DraftService {
         process.env.CONTRACT_ADDRESS
       );
       logger.info(`Contract initialized: ${process.env.CONTRACT_ADDRESS}`);
-
-      // Initialize the custom ABI decoder
-      this.abiDecoder = new InkAbiDecoder(this.api, this.contract);
-      logger.info("Custom ABI decoder initialized");
 
       // Initialize local documents directory
       this.initializeDocumentsDirectory();
@@ -299,36 +294,202 @@ class DraftService {
     logger.info("Event received from contract, attempting to decode...");
 
     try {
-      // First attempt: Use custom ABI decoder
-      const decoded = this.abiDecoder.decodeContractEvent(eventBytes);
+      // First attempt: Try standard Polkadot.js ABI decoding
+      const decodedEvent = this.contract.abi.decodeEvent(eventBytes);
 
-      logger.info("✅ Event decoded successfully", {
-        eventType: decoded.event.identifier,
-        hasArgs: !!decoded.event.args,
+      logger.info("✅ Standard ABI decoding successful", {
+        eventName: decodedEvent.event.identifier,
+        hasArgs: !!decodedEvent.args,
       });
 
       // Process DraftRequested events
-      if (decoded.event.identifier.includes("DraftRequested")) {
+      if (decodedEvent.event.identifier.includes("DraftRequested")) {
         logger.info("Processing DraftRequested event");
-        this.processDraftRequest(decoded.event.args);
+        this.processDraftRequest(decodedEvent.args);
       } else {
-        logger.info(`Received ${decoded.event.identifier} event`);
+        logger.info(`Received ${decodedEvent.event.identifier} event`);
       }
-    } catch (decodeError) {
-      logger.error("Event decoding failed:", {
-        error: decodeError.message,
-        eventLength: eventBytes.length,
-      });
+    } catch (standardDecodeError) {
+      logger.warn(
+        "Standard ABI decoding failed, trying ink!-specific decoding:",
+        {
+          error: standardDecodeError.message,
+          eventLength: eventBytes.length,
+        }
+      );
 
-      // Record the failed event for debugging
-      this.recordFailedEvent({
-        contractAddress: process.env.CONTRACT_ADDRESS,
-        eventHex: eventBytes.toHex ? eventBytes.toHex() : "unavailable",
-        error: `ABI Decode Failed: ${decodeError.message}`,
-        timestamp: Date.now(),
-        reason: "ABI_DECODE_FAILURE",
-      });
+      // Fallback: Use ink!-specific event decoding
+      try {
+        const decoded = this.decodeInkEvent(eventBytes);
+
+        logger.info("✅ Ink! event decoding successful", {
+          eventName: decoded.event.identifier,
+          hasArgs: !!decoded.event.args,
+        });
+
+        // Process DraftRequested events
+        if (decoded.event.identifier.includes("DraftRequested")) {
+          logger.info("Processing DraftRequested event");
+          this.processDraftRequest(decoded.event.args);
+        } else {
+          logger.info(`Received ${decoded.event.identifier} event`);
+        }
+      } catch (inkDecodeError) {
+        logger.error("All event decoding methods failed:", {
+          standardError: standardDecodeError.message,
+          inkError: inkDecodeError.message,
+          eventLength: eventBytes.length,
+        });
+
+        // Record the failed event for debugging
+        this.recordFailedEvent({
+          contractAddress: process.env.CONTRACT_ADDRESS,
+          eventHex: eventBytes.toHex ? eventBytes.toHex() : "unavailable",
+          error: `All decoding failed: ${inkDecodeError.message}`,
+          timestamp: Date.now(),
+          reason: "ALL_DECODING_METHODS_FAILED",
+        });
+      }
     }
+  }
+
+  // Simplified ink!-specific event decoder (only the working parts)
+  decodeInkEvent(eventBytes) {
+    // Convert to Uint8Array for consistent processing (use hex conversion for accuracy)
+    let eventData;
+    if (typeof eventBytes.toHex === "function") {
+      const hexString = eventBytes.toHex();
+      const cleanHex = hexString.startsWith("0x")
+        ? hexString.slice(2)
+        : hexString;
+      eventData = new Uint8Array(
+        cleanHex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16))
+      );
+    } else if (typeof eventBytes.toU8a === "function") {
+      eventData = eventBytes.toU8a();
+    } else {
+      eventData = eventBytes;
+    }
+
+    logger.info("Event data conversion:", {
+      originalLength: eventBytes.length,
+      convertedLength: eventData.length,
+      lengthDiff: eventData.length - eventBytes.length,
+    });
+
+    // Identify event type by length (the pattern that worked) with some flexibility
+    if (eventData.length > 100) {
+      // DraftRequested event (large event with JSON data)
+      return this.decodeDraftRequestedEvent(eventData);
+    } else if (eventData.length >= 39 && eventData.length <= 41) {
+      // LateDeliveryRequestSubmitted event (40 bytes ± 1)
+      return this.decodeLateDeliveryRequestEvent(eventData);
+    } else if (eventData.length >= 8 && eventData.length <= 10) {
+      // LateDeliveryResponseGenerated event (9 bytes ± 1)
+      return this.decodeLateDeliveryResponseEvent(eventData);
+    } else {
+      throw new Error(
+        `Unknown event type with length ${eventData.length}. Expected: 8-10, 39-41, or >100`
+      );
+    }
+  }
+
+  // Working DraftRequested decoder (simplified)
+  decodeDraftRequestedEvent(eventData) {
+    let offset = 0;
+
+    // 1. requester (AccountId) - 32 bytes
+    const requesterBytes = eventData.slice(offset, offset + 32);
+    const requester = this.api.registry.createType("AccountId", requesterBytes);
+    offset += 32;
+
+    // 2. request_id (u64) - 8 bytes
+    const requestIdBytes = eventData.slice(offset, offset + 8);
+    const requestId = this.api.registry.createType("u64", requestIdBytes);
+    offset += 8;
+
+    // 3. template_data (String) - SCALE encoded
+    const stringDataStart = eventData.slice(offset);
+    const { value: templateData, bytesRead } =
+      this.decodeScaleString(stringDataStart);
+    offset += bytesRead;
+
+    // 4. timestamp (u64) - 8 bytes
+    const timestampBytes = eventData.slice(offset, offset + 8);
+    const timestamp = this.api.registry.createType("u64", timestampBytes);
+
+    return {
+      event: {
+        identifier:
+          "late_delivery_and_penalty::latedeliveryandpenalty::DraftRequested",
+        args: {
+          requester: requester.toString(),
+          request_id: requestId.toNumber(),
+          template_data: templateData,
+          timestamp: timestamp.toNumber(),
+        },
+      },
+    };
+  }
+
+  // Working SCALE string decoder
+  decodeScaleString(data) {
+    // Decode compact length
+    const compact = this.api.registry.createType("Compact<u32>", data);
+    const stringLength = compact.toNumber();
+    const bytesRead = compact.encodedLength;
+
+    // Extract string data
+    const stringBytes = data.slice(bytesRead, bytesRead + stringLength);
+    const value = new TextDecoder().decode(stringBytes);
+
+    return {
+      value: value.replace(/\0+$/, "").trim(),
+      bytesRead: bytesRead + stringLength,
+    };
+  }
+
+  // Simplified other event decoders
+  decodeLateDeliveryRequestEvent(eventData) {
+    let offset = 0;
+    const submitterBytes = eventData.slice(offset, offset + 32);
+    const submitter = this.api.registry.createType("AccountId", submitterBytes);
+    offset += 32;
+
+    const requestIdBytes = eventData.slice(offset, offset + 8);
+    const requestId = this.api.registry.createType("u64", requestIdBytes);
+
+    return {
+      event: {
+        identifier:
+          "late_delivery_and_penalty::latedeliveryandpenalty::LateDeliveryAndPenaltyRequestSubmitted",
+        args: {
+          submitter: submitter.toString(),
+          request_id: requestId.toNumber(),
+        },
+      },
+    };
+  }
+
+  decodeLateDeliveryResponseEvent(eventData) {
+    let offset = 0;
+    const requestIdBytes = eventData.slice(offset, offset + 8);
+    const requestId = this.api.registry.createType("u64", requestIdBytes);
+    offset += 8;
+
+    const successByte = eventData[offset];
+    const success = successByte === 1;
+
+    return {
+      event: {
+        identifier:
+          "late_delivery_and_penalty::latedeliveryandpenalty::LateDeliveryAndPenaltyResponseGenerated",
+        args: {
+          request_id: requestId.toNumber(),
+          success: success,
+        },
+      },
+    };
   }
 
   recordFailedEvent(failedEvent) {
