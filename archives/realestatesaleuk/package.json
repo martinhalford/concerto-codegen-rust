@@ -1,0 +1,28 @@
+{
+  "name": "real-estate-sale-uk",
+  "version": "0.1.0",
+  "description": "Agreement for sale and purchase relating to property in the UK",
+  "keywords": [
+    "accord-project",
+    "real-estate",
+    "property-sale",
+    "uk",
+    "contract",
+    "legal-tech"
+  ],
+  "author": "Benext",
+  "license": "Apache-2.0",
+  "accordproject": {
+    "runtime": "typescript",
+    "template": "clause",
+    "cicero": "^0.25.0",
+    "namespace": "io.benext.realestatesaleuk"
+  },
+  "files": [
+    "model/**/*",
+    "text/**/*",
+    "logic/**/*",
+    "package.json",
+    "README.md"
+  ]
+}

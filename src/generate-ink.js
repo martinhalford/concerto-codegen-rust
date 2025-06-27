@@ -11,11 +11,12 @@ const { RustVisitor } = CodeGen;
 const { ensureDirectoryExists } = require("./utils");
 
 /**
- * Load all .cto files from template archives in the archives directory
+ * Load all .cto files from a specific template archive
  * @param {string} archivesDir - Directory containing template archives
+ * @param {string} templateName - Specific template name to load
  * @returns {Array<{filename: string, content: string, archiveName: string}>} Array of model files
  */
-function loadModelFiles(archivesDir) {
+function loadModelFiles(archivesDir, templateName) {
   const modelFiles = [];
 
   if (!fs.existsSync(archivesDir)) {
@@ -28,46 +29,47 @@ function loadModelFiles(archivesDir) {
 
   // Get all subdirectories in archives (each is a template archive)
   const archiveEntries = fs.readdirSync(archivesDir, { withFileTypes: true });
-  const archiveDirectories = archiveEntries
+  const availableTemplates = archiveEntries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
 
-  if (archiveDirectories.length === 0) {
-    console.log("No template archives found in the archives directory.");
+  // Check if the requested template exists
+  if (!availableTemplates.includes(templateName)) {
+    console.error(
+      `❌ Template '${templateName}' not found in archives directory.`
+    );
     console.log(
-      "Please add template archives to the archives/ directory and try again."
+      `Available templates: ${availableTemplates.join(", ") || "none"}`
     );
     return modelFiles;
   }
 
-  // Process each template archive
-  for (const archiveName of archiveDirectories) {
-    const archivePath = path.join(archivesDir, archiveName);
-    const modelDir = path.join(archivePath, "model");
+  console.log(`🎯 Loading template: ${templateName}`);
 
-    if (!fs.existsSync(modelDir)) {
-      console.log(
-        `Warning: No model directory found in archive '${archiveName}', skipping...`
-      );
-      continue;
-    }
+  // Process the specified template archive
+  const archivePath = path.join(archivesDir, templateName);
+  const modelDir = path.join(archivePath, "model");
 
-    console.log(`Processing template archive: ${archiveName}`);
+  if (!fs.existsSync(modelDir)) {
+    console.error(`❌ No model directory found in template '${templateName}'`);
+    return modelFiles;
+  }
 
-    // Load all .cto files from the model directory of this archive
-    const files = fs.readdirSync(modelDir);
+  console.log(`Processing template archive: ${templateName}`);
 
-    for (const file of files) {
-      if (file.endsWith(".cto")) {
-        const filePath = path.join(modelDir, file);
-        const content = fs.readFileSync(filePath, "utf8");
-        modelFiles.push({
-          filename: file,
-          content: content,
-          archiveName: archiveName,
-        });
-        console.log(`  Loaded model file: ${file} from ${archiveName}`);
-      }
+  // Load all .cto files from the model directory
+  const files = fs.readdirSync(modelDir);
+
+  for (const file of files) {
+    if (file.endsWith(".cto")) {
+      const filePath = path.join(modelDir, file);
+      const content = fs.readFileSync(filePath, "utf8");
+      modelFiles.push({
+        filename: file,
+        content: content,
+        archiveName: templateName,
+      });
+      console.log(`  Loaded model file: ${file} from ${templateName}`);
     }
   }
 
@@ -146,6 +148,9 @@ function extractContractTypes(modelManager) {
 
       // Check for concepts
       if (declaration.isConcept && declaration.isConcept()) {
+        console.log(
+          `  📝 Found concept: ${typeName} in namespace: ${namespace}`
+        );
         contractTypes.concepts.push({
           name: typeName,
           fullyQualifiedName,
@@ -272,6 +277,15 @@ function generateContractStorage(contractTypes, contractName) {
   storageFields.push("        owner: AccountId");
   storageFields.push("        paused: bool");
 
+  // Add draft functionality storage
+  storageFields.push("        next_request_id: u64");
+  storageFields.push(
+    "        draft_requests: ink::storage::Mapping<u64, DraftRequest>"
+  );
+  storageFields.push(
+    "        user_drafts: ink::storage::Mapping<AccountId, Vec<u64>>"
+  );
+
   // Add template model data as storage if available
   if (contractTypes.templateModels.length > 0) {
     const templateModel = contractTypes.templateModels[0];
@@ -395,12 +409,8 @@ ${fields}
     }`);
   }
 
-  // Generate concept structures (only relevant ones)
-  const relevantConcepts = contractTypes.concepts.filter((concept) =>
-    ["Penalty", "MonetaryAmount", "Period", "Duration"].includes(concept.name)
-  );
-
-  for (const concept of relevantConcepts) {
+  // Generate concept structures
+  for (const concept of contractTypes.concepts) {
     if (generatedTypes.has(concept.name)) continue;
     generatedTypes.add(concept.name);
 
@@ -449,6 +459,190 @@ ${fields}
   }
 
   return structures.join("\n\n");
+}
+
+/**
+ * Generate draft functionality data structures
+ * @returns {string} Draft-related data structures
+ */
+function generateDraftDataStructures() {
+  return `    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    pub struct DraftRequest {
+        pub requester: AccountId,
+        pub template_data: String,
+        pub status: DraftStatus,
+        pub ipfs_hash: Option<String>,
+        pub error_message: Option<String>,
+        pub created_at: u64,
+        pub updated_at: u64,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    pub enum DraftStatus {
+        Pending,
+        Processing,
+        Ready,
+        Failed,
+    }`;
+}
+
+/**
+ * Generate draft functionality events
+ * @returns {string} Draft-related events
+ */
+function generateDraftEvents() {
+  return `    #[ink(event)]
+    pub struct DraftRequested {
+        #[ink(topic)]
+        pub requester: AccountId,
+        pub request_id: u64,
+        pub template_data: String,
+        pub timestamp: u64,
+    }
+
+    #[ink(event)]
+    pub struct DraftReady {
+        #[ink(topic)]
+        pub requester: AccountId,
+        pub request_id: u64,
+        pub ipfs_hash: String,
+        pub timestamp: u64,
+    }
+
+    #[ink(event)]
+    pub struct DraftError {
+        #[ink(topic)]
+        pub requester: AccountId,
+        pub request_id: u64,
+        pub error_message: String,
+        pub timestamp: u64,
+    }`;
+}
+
+/**
+ * Generate draft functionality implementation
+ * @returns {string} Draft-related contract methods
+ */
+function generateDraftImplementation() {
+  return `        //
+        // === DRAFT REQUEST FUNCTIONALITY ===
+        //
+        #[ink(message)]
+        pub fn request_draft(&mut self, template_data: String) -> Result<u64> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+
+            let caller = self.env().caller();
+            let request_id = self.next_request_id;
+            let timestamp = self.env().block_timestamp();
+
+            let draft_request = DraftRequest {
+                requester: caller,
+                template_data: template_data.clone(),
+                status: DraftStatus::Pending,
+                ipfs_hash: None,
+                error_message: None,
+                created_at: timestamp,
+                updated_at: timestamp,
+            };
+
+            // Store the draft request
+            self.draft_requests.insert(request_id, &draft_request);
+
+            // Add to user's draft list
+            let mut user_drafts = self.user_drafts.get(caller).unwrap_or_default();
+            user_drafts.push(request_id);
+            self.user_drafts.insert(caller, &user_drafts);
+
+            // Increment request ID for next request (with overflow protection)
+            self.next_request_id = self.next_request_id.saturating_add(1);
+
+            // Emit event for off-chain service to pick up
+            self.env().emit_event(DraftRequested {
+                requester: caller,
+                request_id,
+                template_data,
+                timestamp,
+            });
+
+            Ok(request_id)
+        }
+
+        #[ink(message)]
+        pub fn submit_draft_result(&mut self, request_id: u64, ipfs_hash: String) -> Result<()> {
+            // Only owner (or authorized service) can submit results
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+
+            let mut draft_request = self
+                .draft_requests
+                .get(request_id)
+                .ok_or(ContractError::InvalidInput)?;
+
+            draft_request.status = DraftStatus::Ready;
+            draft_request.ipfs_hash = Some(ipfs_hash.clone());
+            draft_request.updated_at = self.env().block_timestamp();
+
+            self.draft_requests.insert(request_id, &draft_request);
+
+            self.env().emit_event(DraftReady {
+                requester: draft_request.requester,
+                request_id,
+                ipfs_hash,
+                timestamp: draft_request.updated_at,
+            });
+
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn submit_draft_error(&mut self, request_id: u64, error_message: String) -> Result<()> {
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+
+            let mut draft_request = self
+                .draft_requests
+                .get(request_id)
+                .ok_or(ContractError::InvalidInput)?;
+
+            draft_request.status = DraftStatus::Failed;
+            draft_request.error_message = Some(error_message.clone());
+            draft_request.updated_at = self.env().block_timestamp();
+
+            self.draft_requests.insert(request_id, &draft_request);
+
+            self.env().emit_event(DraftError {
+                requester: draft_request.requester,
+                request_id,
+                error_message,
+                timestamp: draft_request.updated_at,
+            });
+
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_draft_request(&self, request_id: u64) -> Option<DraftRequest> {
+            self.draft_requests.get(request_id)
+        }
+
+        #[ink(message)]
+        pub fn get_user_drafts(&self, user: AccountId) -> Vec<u64> {
+            self.user_drafts.get(user).unwrap_or_default()
+        }
+
+        #[ink(message)]
+        pub fn get_my_drafts(&self) -> Vec<u64> {
+            let caller = self.env().caller();
+            self.user_drafts.get(caller).unwrap_or_default()
+        }`;
 }
 
 /**
@@ -525,6 +719,9 @@ function generateContractImplementation(contractTypes, contractName) {
             Self {
                 owner: caller,
                 paused: false,
+                next_request_id: 1,
+                draft_requests: ink::storage::Mapping::default(),
+                user_drafts: ink::storage::Mapping::default(),
 ${constructorInit}
             }
         }
@@ -619,6 +816,9 @@ ${constructorInit}
             Ok(response)
         }
 
+        //
+        // === CONTRACT LOGIC FUNCTIONALITY ===
+        //
         fn execute_contract_logic(&self, _request: ${request.name}) -> Result<${
       response.name
     }> {
@@ -656,6 +856,11 @@ ${constructorInit}
         }`;
     }
   }
+
+  // Add draft functionality
+  implementation += `
+
+${generateDraftImplementation()}`;
 
   implementation += `
     }`;
@@ -744,8 +949,10 @@ function createInkLibRs(
   contractName = "ConcertoContract"
 ) {
   const dataStructures = generateDataStructures(contractTypes);
+  const draftDataStructures = generateDraftDataStructures();
   const contractStorage = generateContractStorage(contractTypes, contractName);
   const contractEvents = generateContractEvents(contractTypes);
+  const draftEvents = generateDraftEvents();
   const contractImpl = generateContractImplementation(
     contractTypes,
     contractName
@@ -772,9 +979,13 @@ mod ${contractName.toLowerCase().replace(/[^a-z0-9_]/g, "_")} {
 
 ${dataStructures}
 
+${draftDataStructures}
+
 ${contractStorage}
 
 ${contractEvents}
+
+${draftEvents}
 
 ${contractImpl}
 
@@ -957,7 +1168,7 @@ This contract is licensed under the Apache License 2.0.
  * @param {string} archivesDir - Directory containing template archives
  * @param {string} outputDir - Directory to output generated code
  */
-async function generateInkContract(archivesDir, outputDir) {
+async function generateInkContract(archivesDir, outputDir, templateName) {
   try {
     console.log("🦑 Starting ink! smart contract generation...\n");
     console.log(`📁 Archives directory: ${archivesDir}`);
@@ -965,7 +1176,7 @@ async function generateInkContract(archivesDir, outputDir) {
     console.log("\n");
 
     // Load model files
-    const modelFiles = loadModelFiles(archivesDir);
+    const modelFiles = loadModelFiles(archivesDir, templateName);
 
     if (modelFiles.length === 0) {
       console.log("❌ No model files found. Exiting.");
@@ -1129,40 +1340,131 @@ async function generateInkContract(archivesDir, outputDir) {
 }
 
 /**
+ * Parse command line arguments
+ * @param {Array} args - Command line arguments
+ * @returns {Object} Parsed configuration
+ */
+function parseArguments(args) {
+  const config = {
+    archivesDir: path.join(__dirname, "..", "archives"),
+    outputDir: path.join(__dirname, "..", "output"),
+    templateName: null,
+    help: false,
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg === "--help" || arg === "-h") {
+      config.help = true;
+      return config;
+    } else if (arg === "--template" || arg === "-t") {
+      if (i + 1 < args.length) {
+        config.templateName = args[i + 1];
+        i++; // Skip next argument since we consumed it
+      } else {
+        throw new Error("--template requires a template name");
+      }
+    } else if (arg.startsWith("--template=")) {
+      config.templateName = arg.split("=")[1];
+    } else if (arg.startsWith("-")) {
+      throw new Error(`Unknown option: ${arg}`);
+    } else {
+      // Positional arguments (backwards compatibility)
+      if (
+        !config.archivesDir ||
+        config.archivesDir === path.join(__dirname, "..", "archives")
+      ) {
+        config.archivesDir = path.resolve(arg);
+      } else if (
+        !config.outputDir ||
+        config.outputDir === path.join(__dirname, "..", "output")
+      ) {
+        config.outputDir = path.resolve(arg);
+      } else {
+        throw new Error("Too many positional arguments");
+      }
+    }
+  }
+
+  // Validate that template is specified
+  if (!config.templateName) {
+    throw new Error(
+      "Template name is required. Use --template <name> to specify which template to generate."
+    );
+  }
+
+  return config;
+}
+
+/**
+ * Display help message
+ */
+function showHelp() {
+  console.log(
+    "Usage: node generate-ink.js --template <name> [archives-dir] [output-dir]"
+  );
+  console.log("");
+  console.log("Required Options:");
+  console.log(
+    "  --template, -t <name>  Template name to generate smart contract from"
+  );
+  console.log("");
+  console.log("Optional:");
+  console.log("  --help, -h             Show this help message");
+  console.log("");
+  console.log("Examples:");
+  console.log(
+    "  node generate-ink.js --template real-estate-sale-uk                  # Generate real estate template"
+  );
+  console.log(
+    "  node generate-ink.js -t real-estate-sale-uk archives                # Use custom archives directory"
+  );
+  console.log(
+    "  node generate-ink.js -t late-delivery archives/ldp output/ldp       # Full custom paths"
+  );
+  console.log("");
+  console.log("Template Selection:");
+  console.log(
+    "  Each run generates a smart contract for exactly one template archive."
+  );
+  console.log("  This ensures focused, predictable smart contract generation.");
+  console.log("  To combine multiple templates, run the tool multiple times.");
+}
+
+/**
  * Main function
  */
 async function main() {
-  const args = process.argv.slice(2);
-  let archivesDir, outputDir;
+  try {
+    const args = process.argv.slice(2);
+    const config = parseArguments(args);
 
-  if (args.length === 0) {
-    // Default behavior - consistent with generate.js
-    archivesDir = path.join(__dirname, "..", "archives");
-    outputDir = path.join(__dirname, "..", "output");
-  } else if (args.length === 1) {
-    // Archives dir specified, use default output structure
-    archivesDir = path.resolve(args[0]);
-    outputDir = path.join(__dirname, "..", "output");
-  } else if (args.length === 2) {
-    // Both directories specified (backwards compatibility)
-    archivesDir = path.resolve(args[0]);
-    outputDir = path.resolve(args[1]);
-  } else {
-    console.log("Usage: node generate-ink.js [archives-dir] [output-dir]");
-    console.log("Examples:");
-    console.log(
-      "  node generate-ink.js                    # Use default directories"
+    if (config.help) {
+      showHelp();
+      return;
+    }
+
+    await generateInkContract(
+      config.archivesDir,
+      config.outputDir,
+      config.templateName
     );
-    console.log(
-      "  node generate-ink.js archives           # Custom archives, default output"
-    );
-    console.log(
-      "  node generate-ink.js archives my-output # Custom directories"
-    );
-    process.exit(1);
+  } catch (error) {
+    if (
+      error.message.includes("Unknown option") ||
+      error.message.includes("requires") ||
+      error.message.includes("Too many")
+    ) {
+      console.error(`❌ ${error.message}`);
+      console.log("");
+      showHelp();
+      process.exit(1);
+    } else {
+      console.error("❌ Error:", error.message);
+      process.exit(1);
+    }
   }
-
-  await generateInkContract(archivesDir, outputDir);
 }
 
 // Export functions for testing
