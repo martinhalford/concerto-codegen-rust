@@ -88,6 +88,7 @@ function extractContractTypes(modelManager) {
     templateModels: [],
     concepts: [],
     participants: [],
+    enums: [],
   };
 
   // Get all namespaces and their declarations
@@ -170,6 +171,26 @@ function extractContractTypes(modelManager) {
           properties: extractProperties(declaration),
         });
       }
+
+      // Check for enums - try multiple detection methods
+      const declarationType = declaration.constructor
+        ? declaration.constructor.name
+        : "unknown";
+
+      if (
+        (declaration.isEnum && declaration.isEnum()) ||
+        declarationType.includes("EnumDeclaration") ||
+        (declaration.getType && declaration.getType() === "Enum")
+      ) {
+        console.log(`  🔢 Found enum: ${typeName} in namespace: ${namespace}`);
+        contractTypes.enums.push({
+          name: typeName,
+          fullyQualifiedName,
+          namespace,
+          declaration,
+          values: extractEnumValues(declaration),
+        });
+      }
     }
   }
 
@@ -206,6 +227,24 @@ function extractProperties(declaration) {
   }
 
   return properties;
+}
+
+/**
+ * Extract enum values from an enum declaration
+ * @param {Object} declaration - Concerto enum declaration
+ * @returns {Array} Array of enum value strings
+ */
+function extractEnumValues(declaration) {
+  const values = [];
+
+  if (declaration.getOwnProperties) {
+    const ownProperties = declaration.getOwnProperties();
+    for (const property of ownProperties) {
+      values.push(property.getName());
+    }
+  }
+
+  return values;
 }
 
 /**
@@ -253,7 +292,12 @@ function toInkType(concertoType, isOptional = false, isArray = false) {
       break;
     default:
       // For custom types, use the type name as-is
-      rustType = concertoType;
+      // But add prefix for types that might conflict with Substrate built-ins
+      if (concertoType === "Address") {
+        rustType = "PropertyAddress";
+      } else {
+        rustType = concertoType;
+      }
       break;
   }
 
@@ -425,9 +469,11 @@ ${fields}
       .join(",\n");
 
     if (fields.trim()) {
+      const structName =
+        concept.name === "Address" ? "PropertyAddress" : concept.name;
       structures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
-    pub struct ${concept.name} {
+    pub struct ${structName} {
 ${fields}
     }`);
     }
@@ -462,6 +508,41 @@ ${fields}
 }
 
 /**
+ * Generate enum data structures
+ * @param {Object} contractTypes - Contract type information
+ * @returns {string} Generated enum structures
+ */
+function generateEnumStructures(contractTypes) {
+  let enumStructures = [];
+
+  // Generate business enums (filter out Concerto metamodel enums)
+  const businessEnums = contractTypes.enums.filter(
+    (enumDef) =>
+      !enumDef.namespace.startsWith("concerto") &&
+      !enumDef.namespace.includes("concerto.decorator")
+  );
+
+  for (const enumDef of businessEnums) {
+    const enumVariants = enumDef.values
+      .map((value) => `        ${value}`)
+      .join(",\n");
+
+    enumStructures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    pub enum ${enumDef.name} {
+        #[default]
+        ${enumDef.values[0]},
+${enumDef.values
+  .slice(1)
+  .map((value) => `        ${value}`)
+  .join(",\n")}
+    }`);
+  }
+
+  return enumStructures.join("\n\n");
+}
+
+/**
  * Generate draft functionality data structures
  * @returns {string} Draft-related data structures
  */
@@ -478,9 +559,10 @@ function generateDraftDataStructures() {
         pub updated_at: u64,
     }
 
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
     pub enum DraftStatus {
+        #[default]
         Pending,
         Processing,
         Ready,
@@ -658,15 +740,20 @@ function mapTypeForInkStorage(rustType) {
   if (rustType.includes("Period") || rustType.includes("Duration")) {
     return "u64"; // Represent time periods as seconds (u64)
   }
-  if (
-    rustType.includes("CurrencyCode") ||
-    rustType.includes("DigitalCurrencyCode")
-  ) {
-    return "String"; // Currency codes as strings
-  }
   if (rustType.includes("TemporalUnit") || rustType.includes("PeriodUnit")) {
     return "String"; // Time units as strings
   }
+  // Handle Address type collision with Substrate built-ins
+  if (rustType === "Address") {
+    return "PropertyAddress";
+  }
+  if (rustType.includes("Vec<Address>")) {
+    return rustType.replace("Address", "PropertyAddress");
+  }
+  if (rustType.includes("Option<Address>")) {
+    return rustType.replace("Address", "PropertyAddress");
+  }
+  // Keep enum types as-is (including CurrencyCode, ContractStatus, etc.)
   return rustType;
 }
 
@@ -741,7 +828,10 @@ ${constructorInit}
                         ].includes(prop.name)
                     )
                     .map((prop) =>
-                      generateDefaultValue(mapTypeForInkStorage(prop.rustType))
+                      generateDefaultValue(
+                        mapTypeForInkStorage(prop.rustType),
+                        contractTypes
+                      )
                     )
                     .join(", ")
                 : ""
@@ -832,7 +922,8 @@ ${constructorInit}
                   .map(
                     (prop) =>
                       `${prop.rustName}: ${generateDefaultValue(
-                        mapTypeForInkStorage(prop.rustType)
+                        mapTypeForInkStorage(prop.rustType),
+                        contractTypes
                       )}`
                   )
                   .join(",\n                ")}
@@ -852,7 +943,10 @@ ${constructorInit}
         pub fn get_${prop.rustName}(&self) -> ${mapTypeForInkStorage(
         prop.rustType
       )} {
-            self.${prop.rustName}.clone()
+            ${generateGetterReturn(
+              mapTypeForInkStorage(prop.rustType),
+              prop.rustName
+            )}
         }`;
     }
   }
@@ -869,11 +963,55 @@ ${generateDraftImplementation()}`;
 }
 
 /**
+ * Check if a Rust type implements Copy trait (doesn't need .clone())
+ * @param {string} rustType - Rust type to check
+ * @returns {boolean} True if type implements Copy
+ */
+function isCopyType(rustType) {
+  // Primitive copy types
+  const copyTypes = [
+    "bool",
+    "char",
+    "i8",
+    "i16",
+    "i32",
+    "i64",
+    "i128",
+    "isize",
+    "u8",
+    "u16",
+    "u32",
+    "u64",
+    "u128",
+    "usize",
+    "f32",
+    "f64",
+  ];
+
+  return copyTypes.includes(rustType) || /^[ui]\d+$/.test(rustType);
+}
+
+/**
+ * Generate appropriate return expression for getter methods
+ * @param {string} rustType - Rust type
+ * @param {string} fieldName - Field name
+ * @returns {string} Return expression
+ */
+function generateGetterReturn(rustType, fieldName) {
+  if (isCopyType(rustType)) {
+    return `self.${fieldName}`;
+  } else {
+    return `self.${fieldName}.clone()`;
+  }
+}
+
+/**
  * Generate default value for a Rust type
  * @param {string} rustType - Rust type
+ * @param {Object} contractTypes - Contract types for enum handling
  * @returns {string} Default value
  */
-function generateDefaultValue(rustType) {
+function generateDefaultValue(rustType, contractTypes = null) {
   if (rustType.startsWith("Option<")) {
     return "None";
   } else if (rustType.startsWith("Vec<")) {
@@ -882,11 +1020,17 @@ function generateDefaultValue(rustType) {
     return "String::new()";
   } else if (rustType === "bool") {
     return "false";
-  } else if (rustType.includes("u") || rustType.includes("i")) {
+  } else if (/^[ui]\d+$/.test(rustType)) {
     return "0";
-  } else {
-    return "Default::default()";
+  } else if (contractTypes && contractTypes.enums) {
+    // Check if this is an enum type
+    const enumDef = contractTypes.enums.find((e) => e.name === rustType);
+    if (enumDef && enumDef.values.length > 0) {
+      return `${rustType}::${enumDef.values[0]}`;
+    }
   }
+  // For other custom types (structs, etc.), use Default::default()
+  return "Default::default()";
 }
 
 /**
@@ -949,6 +1093,7 @@ function createInkLibRs(
   contractName = "ConcertoContract"
 ) {
   const dataStructures = generateDataStructures(contractTypes);
+  const enumStructures = generateEnumStructures(contractTypes);
   const draftDataStructures = generateDraftDataStructures();
   const contractStorage = generateContractStorage(contractTypes, contractName);
   const contractEvents = generateContractEvents(contractTypes);
@@ -978,6 +1123,8 @@ mod ${contractName.toLowerCase().replace(/[^a-z0-9_]/g, "_")} {
     pub type Result<T> = core::result::Result<T, ContractError>;
 
 ${dataStructures}
+
+${enumStructures}
 
 ${draftDataStructures}
 
@@ -1298,8 +1445,18 @@ async function generateInkContract(archivesDir, outputDir, templateName) {
     console.log(`🔍 Found ${contractTypes.responses.length} response types`);
     console.log(`🔍 Found ${contractTypes.concepts.length} concept types`);
     console.log(
-      `🔍 Found ${contractTypes.participants.length} participant types\n`
+      `🔍 Found ${contractTypes.participants.length} participant types`
     );
+    console.log(`🔍 Found ${contractTypes.enums.length} enum types`);
+
+    // Debug enum details
+    if (contractTypes.enums.length > 0) {
+      console.log("📋 Enum details:");
+      contractTypes.enums.forEach((enumDef) => {
+        console.log(`  - ${enumDef.name}: [${enumDef.values.join(", ")}]`);
+      });
+    }
+    console.log("");
 
     if (contractTypes.templateModels.length === 0) {
       console.log("⚠️  No template models found. Creating a basic contract.");

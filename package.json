@@ -8,7 +8,7 @@
     "generate": "node src/generate.js",
     "generate-ink": "node src/generate-ink.js --template",
     "ink": "node src/generate-ink.js --template",
-    "ink:real-estate": "node src/generate-ink.js --template real-estate-sale-uk",
+    "ink:real-estate": "node src/generate-ink.js --template realestatesaleuk",
     "ink:late-delivery": "node src/generate-ink.js --template latedeliveryandpenalty",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
