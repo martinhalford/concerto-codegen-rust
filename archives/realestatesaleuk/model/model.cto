@@ -1,8 +1,5 @@
 namespace realestatesaleuk@1.0.0
 
-import org.accordproject.contract@0.2.0.{Contract, Clause} from https://models.accordproject.org/accordproject/contract@0.2.0.cto
-import org.accordproject.runtime@0.2.0.{Request,Response} from https://models.accordproject.org/accordproject/runtime@0.2.0.cto
-
 enum ContractStatus {
   o Draft
   o Signing
@@ -21,15 +18,9 @@ concept Money {
   o CurrencyCode currencyCode
 } 
 
-concept Signature {
-  o Party signatory
-  o String role
-  o DateTime signedAt
-}
-
 concept Address {
   o String addressLine1
-  o String addressLine2 optional
+  o String addressLine2
   o String city
   o String postCode
   o String county
@@ -41,31 +32,37 @@ concept Party {
   o String email
   o String mobile
   o Address address
+  o Signature signature optional
 }
 
-transaction SaleRequest extends Request {
+concept Signature {
+  o String walletAddress
+  o DateTime signedAt
+}
+
+transaction SaleRequest {
   o String requestId
   o Party requester
   o Money purchasePrice
   o Address propertyAddress
 }
 
-transaction SaleResponse extends Response {
+transaction SaleResponse {
   o String requestId
   o Boolean success
-  o String documentUrl optional
-  o String errorMessage optional
+  o String documentUrl
+  o String errorMessage
 }
 
 @template
-asset PropertySale extends Contract {
-  o Party seller
-  o Party buyer
+asset PropertySale identified by contractId {
+  o String contractId
+  o Party[] sellers
+  o Party[] buyers
   o Address propertyAddress
-  o Money purchasePrice
-  o Money deposit
-  o Money balance
-  o DateTime agreementDate
-  o Signature[] signatures
+  o Money purchasePrice optional
+  o Money deposit optional
+  o Money balance optional
+  o DateTime agreementDate optional
   o ContractStatus status
 }

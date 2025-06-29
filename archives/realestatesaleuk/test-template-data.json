@@ -1,36 +1,70 @@
 {
-  "$class": "realestatesaleuk@1.0.0.TemplateData",
+  "$class": "realestatesaleuk@1.0.0.PropertySale",
   "contractId": "CONTRACT_2024_001",
-  "seller": {
-    "$class": "realestatesaleuk@1.0.0.Party",
-    "partyId": "SELLER_001",
-    "fullName": "Transport for London",
-    "email": "property.sales@tfl.gov.uk",
-    "mobile": "+44 20 7222 1234",
-    "address": {
-      "$class": "realestatesaleuk@1.0.0.Address",
-      "addressLine1": "55 Broadway",
-      "addressLine2": "Westminster",
-      "city": "London",
-      "postCode": "SW1H 0BD",
-      "county": "Greater London"
+  "sellers": [
+    {
+      "$class": "realestatesaleuk@1.0.0.Party",
+      "partyId": "SELLER_001",
+      "fullName": "Transport for London",
+      "email": "property.sales@tfl.gov.uk",
+      "mobile": "+44 20 7222 1234",
+      "address": {
+        "$class": "realestatesaleuk@1.0.0.Address",
+        "addressLine1": "55 Broadway",
+        "addressLine2": "Westminster",
+        "city": "London",
+        "postCode": "SW1H 0BD",
+        "county": "Greater London"
+      },
+      "signature": {
+        "$class": "realestatesaleuk@1.0.0.Signature",
+        "walletAddress": "0x1234567890abcdef1234567890abcdef12345678",
+        "signedAt": "2024-01-15T14:30:00.000Z"
+      }
     }
-  },
-  "buyer": {
-    "$class": "realestatesaleuk@1.0.0.Party",
-    "partyId": "BUYER_001",
-    "fullName": "Sarah Elizabeth Johnson",
-    "email": "sarah.johnson@email.com",
-    "mobile": "+44 7890 123456",
-    "address": {
-      "$class": "realestatesaleuk@1.0.0.Address",
-      "addressLine1": "42 Queen's Gate",
-      "addressLine2": "South Kensington",
-      "city": "London",
-      "postCode": "SW7 5HR",
-      "county": "Greater London"
+  ],
+  "buyers": [
+    {
+      "$class": "realestatesaleuk@1.0.0.Party",
+      "partyId": "BUYER_001",
+      "fullName": "Sarah Elizabeth Johnson",
+      "email": "sarah.johnson@email.com",
+      "mobile": "+44 7890 123456",
+      "address": {
+        "$class": "realestatesaleuk@1.0.0.Address",
+        "addressLine1": "42 Queen's Gate",
+        "addressLine2": "South Kensington",
+        "city": "London",
+        "postCode": "SW7 5HR",
+        "county": "Greater London"
+      },
+      "signature": {
+        "$class": "realestatesaleuk@1.0.0.Signature",
+        "walletAddress": "0xabcdef1234567890abcdef1234567890abcdef12",
+        "signedAt": "2024-01-15T15:45:00.000Z"
+      }
+    },
+    {
+      "$class": "realestatesaleuk@1.0.0.Party",
+      "partyId": "BUYER_002",
+      "fullName": "Brian Felix Williams",
+      "email": "brian.williams@email.com",
+      "mobile": "+44 7438 123456",
+      "address": {
+        "$class": "realestatesaleuk@1.0.0.Address",
+        "addressLine1": "42 Queen's Gate",
+        "addressLine2": "South Kensington",
+        "city": "London",
+        "postCode": "SW7 5HR",
+        "county": "Greater London"
+      },
+      "signature": {
+        "$class": "realestatesaleuk@1.0.0.Signature",
+        "walletAddress": "0xabcdef1234567890abcdef1234567890abcdef12",
+        "signedAt": "2024-01-15T15:45:00.000Z"
+      }
     }
-  },
+  ],
   "propertyAddress": {
     "$class": "realestatesaleuk@1.0.0.Address",
     "addressLine1": "Land at Bridge View",
@@ -55,47 +89,5 @@
     "currencyCode": "GBP"
   },
   "agreementDate": "2024-01-15T10:00:00.000Z",
-  "signatures": [
-    {
-      "$class": "realestatesaleuk@1.0.0.Signature",
-      "signatory": {
-        "$class": "realestatesaleuk@1.0.0.Party",
-        "partyId": "SELLER_001",
-        "fullName": "Transport for London",
-        "email": "property.sales@tfl.gov.uk",
-        "mobile": "+44 20 7222 1234",
-        "address": {
-          "$class": "realestatesaleuk@1.0.0.Address",
-          "addressLine1": "55 Broadway",
-          "addressLine2": "Westminster",
-          "city": "London",
-          "postCode": "SW1H 0BD",
-          "county": "Greater London"
-        }
-      },
-      "role": "Seller",
-      "signedAt": "2024-01-15T14:30:00.000Z"
-    },
-    {
-      "$class": "realestatesaleuk@1.0.0.Signature",
-      "signatory": {
-        "$class": "realestatesaleuk@1.0.0.Party",
-        "partyId": "BUYER_001",
-        "fullName": "Sarah Elizabeth Johnson",
-        "email": "sarah.johnson@email.com",
-        "mobile": "+44 7890 123456",
-        "address": {
-          "$class": "realestatesaleuk@1.0.0.Address",
-          "addressLine1": "42 Queen's Gate",
-          "addressLine2": "South Kensington",
-          "city": "London",
-          "postCode": "SW7 5HR",
-          "county": "Greater London"
-        }
-      },
-      "role": "Buyer",
-      "signedAt": "2024-01-15T15:45:00.000Z"
-    }
-  ],
   "status": "Signed"
 }

@@ -14,25 +14,21 @@
 
 ## PARTIES
 
-{{#clause seller}}
-**THE SELLER:**  
-{{fullName}}  
-Email: {{email}}  
-Mobile: {{mobile}}  
-{{#clause address}}
-Address: {{addressLine1}}, {{addressLine2}}, {{city}}, {{postCode}}, {{county}}
-{{/clause}}
-{{/clause}}
+**THE SELLERS:**  
+{{#ulist sellers}}
 
-{{#clause buyer}}
-**THE BUYER:**  
-{{fullName}}  
-Email: {{email}}  
-Mobile: {{mobile}}  
-{{#clause address}}
-Address: {{addressLine1}}, {{addressLine2}}, {{city}}, {{postCode}}, {{county}}
-{{/clause}}
-{{/clause}}
+- **{{fullName}}** \
+  email: {{email}}, \
+  mobile: {{mobile}})
+  {{/ulist}}
+
+**THE BUYERS:**  
+{{#ulist buyers}}
+
+- **{{fullName}}** \
+  email: {{email}}, \
+  mobile: {{mobile}})
+  {{/ulist}}
 
 ---
 
@@ -57,13 +53,13 @@ Address: {{addressLine1}}, {{addressLine2}}, {{city}}, {{postCode}}, {{county}}
 ## AGREEMENT
 
 {{#clause purchasePrice}}
-The Seller agrees to sell and the Buyer agrees to purchase the above-described property for the Purchase Price of {{currencyCode}} {{amount}}.
+The Sellers agree to sell and the Buyers agree to purchase the above-described property for the Purchase Price of {{currencyCode}} {{amount}}.
 {{/clause}}
 
 ### 1. DEPOSIT
 
 {{#clause deposit}}
-The Buyer shall pay a deposit of {{currencyCode}} {{amount}} upon signing this agreement.
+The Buyers shall pay a deposit of {{currencyCode}} {{amount}} upon signing this agreement.
 {{/clause}}
 
 ### 2. BALANCE
@@ -78,25 +74,34 @@ Completion shall take place in accordance with the terms set out in the Special 
 
 ### 4. TITLE
 
-The Seller shall provide good and marketable title to the property, free from encumbrances except as disclosed.
+The Sellers shall provide good and marketable title to the property, free from encumbrances except as disclosed.
 
 ### 5. RISK
 
-Risk in the property shall pass to the Buyer on completion.
+Risk in the property shall pass to the Buyers on completion.
 
 ---
 
 ## SIGNATURES
 
-{{#clause seller}}
-**Seller:** {{fullName}}
-{{/clause}}
-{{#clause buyer}}  
-**Buyer:** {{fullName}}
-{{/clause}}
+**Sellers:**  
+{{#ulist sellers}}
 
-**Contract Signed:** {{agreementDate}}
+- **{{fullName}}**{{#with signature}} \
+   Signed: _{{signedAt as "DD MMM YYYY"}}_ \
+   Wallet: _{{walletAddress}}_ {{/with}}
+  {{/ulist}}
+
+**Buyers:**  
+{{#ulist buyers}}
+
+- **{{fullName}}**{{#with signature}} \
+   Signed: _{{signedAt as "DD MMM YYYY"}}_ \
+   Wallet: _{{walletAddress}}_ {{/with}}
+  {{/ulist}}
 
 ---
+
+**Agreement Date:** {{agreementDate as "DD MMM YYYY"}}
 
 _This agreement is governed by the laws of England and Wales._
