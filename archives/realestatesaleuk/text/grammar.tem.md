@@ -35,15 +35,15 @@
 ## TERMS OF SALE
 
 {{#clause purchasePrice}}
-**Purchase Price:** {{currencyCode}} {{amount}}
+**Purchase Price:** {{currencyCode}} {{amount as "0,0"}}
 {{/clause}}
 
 {{#clause deposit}}
-**Deposit:** {{currencyCode}} {{amount}}
+**Deposit:** {{currencyCode}} {{amount as "0,0"}}
 {{/clause}}
 
 {{#clause balance}}
-**Balance:** {{currencyCode}} {{amount}}
+**Balance:** {{currencyCode}} {{amount as "0,0"}}
 {{/clause}}
 
 **Contract Status:** {{status}}
@@ -53,19 +53,19 @@
 ## AGREEMENT
 
 {{#clause purchasePrice}}
-The Sellers agree to sell and the Buyers agree to purchase the above-described property for the Purchase Price of {{currencyCode}} {{amount}}.
+The Sellers agree to sell and the Buyers agree to purchase the above-described property for the Purchase Price of **{{currencyCode}} {{amount as "0,0"}}**.
 {{/clause}}
 
 ### 1. DEPOSIT
 
 {{#clause deposit}}
-The Buyers shall pay a deposit of {{currencyCode}} {{amount}} upon signing this agreement.
+The Buyers shall pay a deposit of **{{currencyCode}} {{amount as "0,0"}}** upon signing this agreement.
 {{/clause}}
 
 ### 2. BALANCE
 
 {{#clause balance}}
-The remaining balance of {{currencyCode}} {{amount}} shall be paid on completion.
+The remaining balance of **{{currencyCode}} {{amount as "0,0"}}** shall be paid on completion.
 {{/clause}}
 
 ### 3. COMPLETION
