@@ -1,5 +1,7 @@
 namespace realestatesaleuk@1.0.0
 
+import org.accordproject.contract@0.2.0.{Contract, Clause} from https://models.accordproject.org/accordproject/contract@0.2.0.cto
+
 enum ContractStatus {
   o Draft
   o Signing
@@ -55,8 +57,7 @@ transaction SaleResponse {
 }
 
 @template
-asset PropertySale identified by contractId {
-  o String contractId
+asset PropertySale extends Contract {
   o Party[] sellers
   o Party[] buyers
   o Address propertyAddress

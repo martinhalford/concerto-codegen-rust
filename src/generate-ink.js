@@ -1311,6 +1311,59 @@ This contract is licensed under the Apache License 2.0.
 }
 
 /**
+ * Read package name from template's package.json file
+ * @param {string} archivesDir - Directory containing template archives
+ * @param {string} templateName - Template name
+ * @returns {string} Package name from package.json
+ * @throws {Error} If package.json doesn't exist or doesn't have a name field
+ */
+function getPackageNameFromJson(archivesDir, templateName) {
+  const packageJsonPath = path.join(archivesDir, templateName, "package.json");
+
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new Error(
+      `❌ No package.json found in template '${templateName}'. ` +
+        `Please create a package.json file with a 'name' field in '${path.join(
+          archivesDir,
+          templateName
+        )}'.`
+    );
+  }
+
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+
+    if (
+      !packageJson.name ||
+      typeof packageJson.name !== "string" ||
+      packageJson.name.trim() === ""
+    ) {
+      throw new Error(
+        `❌ Missing or invalid 'name' field in package.json for template '${templateName}'. ` +
+          `Please add a valid 'name' field to '${packageJsonPath}'.`
+      );
+    }
+
+    console.log(`📦 Found package name in package.json: ${packageJson.name}`);
+
+    // Convert to kebab-case for Rust package naming conventions
+    return packageJson.name
+      .replace(/([A-Z])/g, "-$1")
+      .toLowerCase()
+      .replace(/^-/, "")
+      .replace(/[^a-z0-9-]/g, "-"); // Replace invalid chars with dashes
+  } catch (error) {
+    if (error.message.startsWith("❌")) {
+      throw error; // Re-throw our custom errors
+    }
+    throw new Error(
+      `❌ Could not parse package.json for template '${templateName}': ${error.message}. ` +
+        `Please ensure '${packageJsonPath}' contains valid JSON.`
+    );
+  }
+}
+
+/**
  * Generate ink! smart contract from Concerto models
  * @param {string} archivesDir - Directory containing template archives
  * @param {string} outputDir - Directory to output generated code
@@ -1474,10 +1527,7 @@ async function generateInkContract(archivesDir, outputDir, templateName) {
     ensureDirectoryExists(srcDir);
 
     // Generate ink! contract files
-    const packageName = contractName
-      .replace(/([A-Z])/g, "-$1")
-      .toLowerCase()
-      .replace(/^-/, ""); // Remove leading dash if present
+    const packageName = getPackageNameFromJson(archivesDir, templateName);
 
     createInkCargoToml(outputDir, packageName);
     createInkLibRs(srcDir, contractTypes, contractName);
