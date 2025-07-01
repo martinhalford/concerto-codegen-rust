@@ -758,6 +758,45 @@ function mapTypeForInkStorage(rustType) {
 }
 
 /**
+ * Pair Request and Response types by matching names
+ * @param {Object} contractTypes - Contract type information
+ * @returns {Array} Array of {request, response, baseName} pairs
+ */
+function pairRequestsAndResponses(contractTypes) {
+  const pairs = [];
+
+  for (const request of contractTypes.requests) {
+    // Extract base name from request (e.g., "SaleRequest" -> "Sale")
+    const baseName = request.name.replace(/Request$/, "");
+
+    // Find matching response (e.g., "SaleResponse")
+    const response = contractTypes.responses.find(
+      (r) => r.name === baseName + "Response"
+    );
+
+    if (response) {
+      // Convert camelCase to snake_case (e.g., "AmendContract" -> "amend_contract")
+      const functionName = baseName
+        .replace(/([A-Z])/g, "_$1")
+        .toLowerCase()
+        .replace(/^_/, "");
+
+      pairs.push({
+        request,
+        response,
+        baseName,
+        functionName,
+      });
+      console.log(`  ✅ Paired: ${request.name} -> ${response.name}`);
+    } else {
+      console.log(`  ⚠️  No matching response found for: ${request.name}`);
+    }
+  }
+
+  return pairs;
+}
+
+/**
  * Generate ink! contract implementation
  * @param {Object} contractTypes - Contract type information
  * @param {string} contractName - Name of the contract
@@ -872,22 +911,27 @@ ${constructorInit}
             Ok(())
         }`;
 
-  // Generate request processing methods
-  if (contractTypes.requests.length > 0 && contractTypes.responses.length > 0) {
-    const request = contractTypes.requests[0];
-    const response = contractTypes.responses[0];
+  // Generate request processing methods for each Request/Response pair
+  const requestResponsePairs = pairRequestsAndResponses(contractTypes);
 
-    implementation += `
+  if (requestResponsePairs.length > 0) {
+    console.log(
+      `📋 Generating ${requestResponsePairs.length} request handler(s):`
+    );
+
+    for (const pair of requestResponsePairs) {
+      const { request, response, baseName, functionName } = pair;
+
+      implementation += `
 
         #[ink(message)]
-        pub fn process_request(&mut self, request: ${request.name}) -> Result<${
-      response.name
-    }> {
+        pub fn ${functionName}(&mut self, request: ${request.name}) -> Result<${
+        response.name
+      }> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
 
-            // Generate a simple request ID
             let request_id = self.env().block_number() as u64;
             
             self.env().emit_event(${request.name}Submitted {
@@ -895,26 +939,12 @@ ${constructorInit}
                 request_id,
             });
 
-            // Process the request logic here
-            let response = self.execute_contract_logic(request)?;
-            
-            self.env().emit_event(${response.name}Generated {
-                request_id,
-                success: true,
-            });
-
-            Ok(response)
-        }
-
-        //
-        // === CONTRACT LOGIC FUNCTIONALITY ===
-        //
-        fn execute_contract_logic(&self, _request: ${request.name}) -> Result<${
-      response.name
-    }> {
-            // Implement your contract logic here
-            // This is a placeholder implementation
-            Ok(${response.name} {
+            // === BEGIN CUSTOM LOGIC ===
+            // TODO: Implement your ${functionName.replace(
+              /_/g,
+              " "
+            )} logic here
+            let response = ${response.name} {
                 ${response.properties
                   .filter(
                     (prop) => !["$class", "$timestamp"].includes(prop.name)
@@ -927,8 +957,26 @@ ${constructorInit}
                       )}`
                   )
                   .join(",\n                ")}
-            })
+            };
+            // === END CUSTOM LOGIC ===
+            
+            self.env().emit_event(${response.name}Generated {
+                request_id,
+                success: true,
+            });
+
+            Ok(response)
         }`;
+
+      console.log(`  📝 Generated handler: ${functionName}`);
+    }
+  } else if (
+    contractTypes.requests.length > 0 ||
+    contractTypes.responses.length > 0
+  ) {
+    console.log(
+      `⚠️  Found ${contractTypes.requests.length} request(s) and ${contractTypes.responses.length} response(s), but no matching pairs`
+    );
   }
 
   // Generate getter methods for template model properties

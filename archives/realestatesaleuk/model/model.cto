@@ -1,18 +1,28 @@
 namespace realestatesaleuk@1.0.0
 
 import org.accordproject.contract@0.2.0.{Contract, Clause} from https://models.accordproject.org/accordproject/contract@0.2.0.cto
+import org.accordproject.runtime@0.2.0.{Request,Response} from https://models.accordproject.org/accordproject/runtime@0.2.0.cto
 
 enum ContractStatus {
   o Draft
   o Signing
   o Signed
   o Superseded
+  o Cancelled
+  o Paused
 }
 
 enum CurrencyCode {
   o EUR
   o GBP
   o USD
+}
+
+enum OfferAction {
+  o Submit
+  o Accept
+  o Reject
+  o Cancel
 }
 
 concept Money {
@@ -42,18 +52,48 @@ concept Signature {
   o DateTime signedAt
 }
 
-transaction SaleRequest {
-  o String requestId
+transaction AmendContractRequest extends Request {
   o Party requester
-  o Money purchasePrice
   o Address propertyAddress
+  o Money purchasePrice optional
+  o Money deposit optional
+  o Money balance optional
+  o DateTime agreementDate optional
 }
 
-transaction SaleResponse {
-  o String requestId
+transaction AmendContractResponse extends Response {
   o Boolean success
-  o String documentUrl
-  o String errorMessage
+  o String errorMessage optional
+}
+
+transaction ChangeStatusRequest extends Request {
+  o Party requester
+  o ContractStatus status
+}
+
+transaction ChangeStatusResponse extends Response {
+  o Boolean success
+  o String errorMessage optional
+}
+
+transaction ManageOfferRequest extends Request {
+  o Party requester
+  o OfferAction action
+  o Money offer optional
+}
+
+transaction ManageOfferResponse extends Response {
+  o Boolean success
+  o String errorMessage optional
+}
+
+transaction SignContractRequest extends Request {
+  o Party requester
+}
+
+transaction SignContractResponse extends Response {
+  o Boolean success
+  o String errorMessage optional
 }
 
 @template
