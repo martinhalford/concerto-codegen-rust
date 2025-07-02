@@ -330,11 +330,11 @@ function generateContractStorage(contractTypes, contractName) {
     "        user_drafts: ink::storage::Mapping<AccountId, Vec<u64>>"
   );
 
-  // Add amendment tracking storage
+  // Add audit log storage
   storageFields.push(
-    "        amendment_history: ink::storage::Mapping<u64, AmendmentRecord>"
+    "        audit_log: ink::storage::Mapping<u64, AuditLogEntry>"
   );
-  storageFields.push("        amendment_count: u64");
+  storageFields.push("        audit_log_count: u64");
 
   // Add template model data as storage if available
   if (contractTypes.templateModels.length > 0) {
@@ -603,17 +603,7 @@ function generateDraftDataStructures() {
         Failed,
     }
 
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub struct AmendmentRecord {
-        pub amended_by: AccountId,
-        pub amended_at: u64,
-        pub function_name: String,
-        pub request_id: u64,
-    }`;
+`;
 }
 
 /**
@@ -645,17 +635,6 @@ function generateDraftEvents() {
         pub requester: AccountId,
         pub request_id: u64,
         pub error_message: String,
-        pub timestamp: u64,
-    }
-
-    #[ink(event)]
-    pub struct AmendmentRecorded {
-        #[ink(topic)]
-        pub amendment_id: u64,
-        #[ink(topic)]
-        pub amended_by: AccountId,
-        pub function_name: String,
-        pub request_id: u64,
         pub timestamp: u64,
     }`;
 }
@@ -787,73 +766,151 @@ function generateDraftImplementation() {
  * Generate amendment tracking/audit trail functionality implementation
  * @returns {string} Amendment tracking contract methods
  */
-function generateAmendmentImplementation() {
+/**
+ * Analyze contract types to determine what AmendmentValue variants are needed
+ * @param {Object} contractTypes - Contract type information
+ * @returns {Set} Set of amendment value types needed
+ */
+/**
+ * Generate simple audit log types - just track function calls, no complex values
+ * @returns {string} Generated audit log types
+ */
+function generateAuditLogTypes() {
   return `
-        // === AMENDMENT TRACKING FUNCTIONALITY ===
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct AuditLogEntry {
+        pub caller: AccountId,
+        pub timestamp: u64,
+        pub function_name: String,
+        pub request_id: u64,
+    }`;
+}
+
+/**
+ * Generate audit log events with detailed change tracking
+ * @returns {string} Generated audit log events
+ */
+function generateAuditLogEvents() {
+  return `
+    #[ink(event)]
+    pub struct FunctionCalled {
+        #[ink(topic)]
+        pub caller: AccountId,
+        #[ink(topic)]
+        pub function_name: String,
+        pub request_id: u64,
+        pub timestamp: u64,
+    }
+
+    #[ink(event)]
+    pub struct ContractDataChanged {
+        #[ink(topic)]
+        pub field_name: String,
+        #[ink(topic)]
+        pub changed_by: AccountId,
+        pub old_value: String,
+        pub new_value: String,
+        pub block_number: u64,
+        pub timestamp: u64,
+    }`;
+}
+
+/**
+ * Generate enhanced audit log implementation with change tracking
+ * @returns {string} Generated audit log implementation
+ */
+function generateAuditLogImplementation() {
+  return `
+        // === AUDIT LOG FUNCTIONALITY ===
         
-        /// Record an amendment in the contract history
-        fn record_amendment(&mut self, function_name: &str, request_id: u64) {
-            let amendment = AmendmentRecord {
-                amended_by: self.env().caller(),
-                amended_at: self.env().block_timestamp(),
+        /// Record a function call in the audit log
+        fn log_function_call(&mut self, function_name: &str, request_id: u64) {
+            let caller = self.env().caller();
+            let timestamp = self.env().block_timestamp();
+            
+            let log_entry = AuditLogEntry {
+                caller,
+                timestamp,
                 function_name: function_name.to_string(),
                 request_id,
             };
             
-            self.amendment_count = self.amendment_count.saturating_add(1);
-            self.amendment_history.insert(self.amendment_count, &amendment);
+            // Store with current count as index, then increment
+            self.audit_log.insert(self.audit_log_count, &log_entry);
+            self.audit_log_count = self.audit_log_count.saturating_add(1);
             
-            self.env().emit_event(AmendmentRecorded {
-                amendment_id: self.amendment_count,
-                amended_by: amendment.amended_by,
+            self.env().emit_event(FunctionCalled {
+                caller,
                 function_name: function_name.to_string(),
                 request_id,
-                timestamp: amendment.amended_at,
+                timestamp,
             });
         }
 
-        #[ink(message)]
-        pub fn get_amendment_count(&self) -> u64 {
-            self.amendment_count
+        /// Record a field change with before/after values
+        fn log_field_change(&mut self, field_name: &str, old_value: &str, new_value: &str) {
+            let caller = self.env().caller();
+            let timestamp = self.env().block_timestamp();
+            let block_number = self.env().block_number() as u64;
+            
+            self.env().emit_event(ContractDataChanged {
+                field_name: field_name.to_string(),
+                changed_by: caller,
+                old_value: old_value.to_string(),
+                new_value: new_value.to_string(),
+                block_number,
+                timestamp,
+            });
+        }
+
+        /// Helper macro-like function to track field changes for String types
+        fn update_string_field(&mut self, field_name: &str, current_value: &mut String, new_value: String) {
+            if *current_value != new_value {
+                self.log_field_change(field_name, current_value, &new_value);
+                *current_value = new_value;
+            }
+        }
+
+        /// Helper macro-like function to track field changes for u128 types
+        fn update_numeric_field(&mut self, field_name: &str, current_value: &mut u128, new_value: u128) {
+            if *current_value != new_value {
+                // Convert to strings manually to avoid format! dependency
+                let old_str = current_value.to_string();
+                let new_str = new_value.to_string();
+                self.log_field_change(field_name, &old_str, &new_str);
+                *current_value = new_value;
+            }
+        }
+
+        /// Helper macro-like function to track field changes for boolean types
+        fn update_bool_field(&mut self, field_name: &str, current_value: &mut bool, new_value: bool) {
+            if *current_value != new_value {
+                self.log_field_change(field_name, &current_value.to_string(), &new_value.to_string());
+                *current_value = new_value;
+            }
         }
 
         #[ink(message)]
-        pub fn get_amendment(&self, amendment_id: u64) -> Option<AmendmentRecord> {
-            self.amendment_history.get(amendment_id)
+        pub fn get_audit_log_count(&self) -> u64 {
+            self.audit_log_count
         }
 
         #[ink(message)]
-        pub fn get_amendment_history(&self, start: u64, limit: u64) -> Vec<AmendmentRecord> {
-            let mut amendments = Vec::new();
-            let end = start.saturating_add(limit).min(self.amendment_count.saturating_add(1));
+        pub fn get_audit_log(&self, start: u64, limit: u64) -> Vec<AuditLogEntry> {
+            let mut entries = Vec::new();
+            let end = start.saturating_add(limit).min(self.audit_log_count);
             
             for i in start..end {
-                if let Some(amendment) = self.amendment_history.get(i) {
-                    amendments.push(amendment);
+                if let Some(entry) = self.audit_log.get(i) {
+                    entries.push(entry);
                 }
             }
             
-            amendments
-        }
-
-        #[ink(message)]
-        pub fn get_amendments_by_user(&self, user: AccountId, limit: u64) -> Vec<AmendmentRecord> {
-            let mut amendments = Vec::new();
-            let mut count = 0;
-            
-            for i in 1..=self.amendment_count {
-                if count >= limit {
-                    break;
-                }
-                if let Some(amendment) = self.amendment_history.get(i) {
-                    if amendment.amended_by == user {
-                        amendments.push(amendment);
-                        count = count.saturating_add(1);
-                    }
-                }
-            }
-            
-            amendments
+            entries
         }`;
 }
 
@@ -984,8 +1041,8 @@ function generateContractImplementation(contractTypes, contractName) {
                 next_request_id: 1,
                 draft_requests: ink::storage::Mapping::default(),
                 user_drafts: ink::storage::Mapping::default(),
-                amendment_history: ink::storage::Mapping::default(),
-                amendment_count: 0,
+                audit_log: ink::storage::Mapping::default(),
+                audit_log_count: 0,
 ${constructorInit}
             }
         }
@@ -1100,8 +1157,8 @@ ${constructorInit}
             };
             // === END CUSTOM LOGIC ===
             
-            // Record amendment in history
-            self.record_amendment("${functionName}", request_id);
+            // Log function call for audit trail
+            self.log_function_call("${functionName}", request_id);
             
             self.env().emit_event(${response.name}Generated {
                 request_id,
@@ -1142,15 +1199,58 @@ ${constructorInit}
     }
   }
 
+  // Generate field update methods with automatic change tracking
+  if (templateModel) {
+    for (const prop of templateModel.properties.filter(
+      (p) =>
+        !["$class", "$timestamp", "clauseId", "$identifier"].includes(p.name)
+    )) {
+      const mappedType = mapTypeForInkStorage(prop.rustType);
+      const fieldName = prop.rustName;
+
+      // Determine which update helper to use based on type
+      let updateMethod;
+      if (mappedType === "String") {
+        updateMethod = `self.update_string_field("${fieldName}", &mut self.${fieldName}, new_value);`;
+      } else if (mappedType === "bool") {
+        updateMethod = `self.update_bool_field("${fieldName}", &mut self.${fieldName}, new_value);`;
+      } else if (mappedType.match(/^u\d+$/) || mappedType.match(/^i\d+$/)) {
+        updateMethod = `self.update_numeric_field("${fieldName}", &mut self.${fieldName}, new_value);`;
+      } else {
+        // For complex types, log the change without detailed comparison
+        updateMethod = `
+            self.log_field_change("${fieldName}", "${mappedType}_changed", "${mappedType}_updated");
+            self.${fieldName} = new_value;`;
+      }
+
+      implementation += `
+
+        #[ink(message)]
+        pub fn set_${fieldName}(&mut self, new_value: ${mappedType}) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+            
+            ${updateMethod}
+            Ok(())
+        }`;
+    }
+  }
+
   // Add draft functionality
   implementation += `
 
 ${generateDraftImplementation()}`;
 
-  // Add amendment tracking functionality
+  // Add audit log functionality
   implementation += `
 
-${generateAmendmentImplementation()}`;
+${generateAuditLogImplementation()}`;
 
   implementation += `
     }`;
@@ -1302,9 +1402,11 @@ function createInkLibRs(
   const dataStructures = generateDataStructures(contractTypes);
   const enumStructures = generateEnumStructures(contractTypes);
   const draftDataStructures = generateDraftDataStructures();
+  const auditLogTypes = generateAuditLogTypes();
   const contractStorage = generateContractStorage(contractTypes, contractName);
   const contractEvents = generateContractEvents(contractTypes);
   const draftEvents = generateDraftEvents();
+  const auditLogEvents = generateAuditLogEvents();
   const contractImpl = generateContractImplementation(
     contractTypes,
     contractName
@@ -1316,6 +1418,7 @@ function createInkLibRs(
 mod ${contractName.toLowerCase().replace(/[^a-z0-9_]/g, "_")} {
     use ink::prelude::string::{String, ToString};
     use ink::prelude::vec::Vec;
+    use ink::prelude::format;
 
     // Error types
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -1335,11 +1438,15 @@ ${enumStructures}
 
 ${draftDataStructures}
 
+${auditLogTypes}
+
 ${contractStorage}
 
 ${contractEvents}
 
 ${draftEvents}
+
+${auditLogEvents}
 
 ${contractImpl}
 
@@ -1892,7 +1999,7 @@ module.exports = {
   generateContractEvents,
   generateDataStructures,
   generateDraftImplementation,
-  generateAmendmentImplementation,
+  generateAuditLogImplementation,
   generateContractImplementation,
   createInkCargoToml,
   createInkLibRs,
