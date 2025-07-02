@@ -18,6 +18,15 @@ enum CurrencyCode {
   o USD
 }
 
+enum Country {
+  o UK
+  o USA
+  o AUSTRALIA
+  o FRANCE
+  o GERMANY
+  o ITALY
+}
+
 enum OfferAction {
   o Submit
   o Accept
@@ -36,6 +45,7 @@ concept Address {
   o String city
   o String postCode
   o String county
+  o Country country
 }
 
 concept Party {
@@ -44,17 +54,15 @@ concept Party {
   o String email
   o String mobile
   o Address address
-  o Signature signature optional
+  o String walletAddress
+  o DateTime signedAt optional
 }
 
-concept Signature {
-  o String walletAddress
-  o DateTime signedAt
-}
 
 transaction AmendContractRequest extends Request {
-  o Party requester
-  o Address propertyAddress
+  o Party[] sellers optional
+  o Party[] buyers optional
+  o Address propertyAddress optional
   o Money purchasePrice optional
   o Money deposit optional
   o Money balance optional
@@ -67,8 +75,7 @@ transaction AmendContractResponse extends Response {
 }
 
 transaction ChangeStatusRequest extends Request {
-  o Party requester
-  o ContractStatus status
+  o ContractStatus newStatus
 }
 
 transaction ChangeStatusResponse extends Response {
@@ -77,7 +84,6 @@ transaction ChangeStatusResponse extends Response {
 }
 
 transaction ManageOfferRequest extends Request {
-  o Party requester
   o OfferAction action
   o Money offer optional
 }
@@ -88,7 +94,6 @@ transaction ManageOfferResponse extends Response {
 }
 
 transaction SignContractRequest extends Request {
-  o Party requester
 }
 
 transaction SignContractResponse extends Response {

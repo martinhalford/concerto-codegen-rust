@@ -330,6 +330,12 @@ function generateContractStorage(contractTypes, contractName) {
     "        user_drafts: ink::storage::Mapping<AccountId, Vec<u64>>"
   );
 
+  // Add amendment tracking storage
+  storageFields.push(
+    "        amendment_history: ink::storage::Mapping<u64, AmendmentRecord>"
+  );
+  storageFields.push("        amendment_count: u64");
+
   // Add template model data as storage if available
   if (contractTypes.templateModels.length > 0) {
     const templateModel = contractTypes.templateModels[0];
@@ -346,7 +352,7 @@ function generateContractStorage(contractTypes, contractName) {
 
   return `    #[ink(storage)]
     pub struct ${contractName} {
-${storageFields.join(",\n")}
+${storageFields.map((field) => field + ",").join("\n")}
     }`;
 }
 
@@ -422,15 +428,20 @@ function generateDataStructures(contractTypes) {
       .filter((prop) => !["$class", "$timestamp"].includes(prop.name))
       .map(
         (prop) =>
-          `        pub ${prop.rustName}: ${mapTypeForInkStorage(prop.rustType)}`
+          `        pub ${prop.rustName}: ${mapTypeForInkStorage(
+            prop.rustType
+          )},`
       )
-      .join(",\n");
+      .join("\n");
+
+    const structBody = fields.trim() ? `\n${fields}\n    ` : "";
 
     structures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
-    pub struct ${request.name} {
-${fields}
-    }`);
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct ${request.name} {${structBody}}`);
   }
 
   // Generate response structures
@@ -442,15 +453,20 @@ ${fields}
       .filter((prop) => !["$class", "$timestamp"].includes(prop.name))
       .map(
         (prop) =>
-          `        pub ${prop.rustName}: ${mapTypeForInkStorage(prop.rustType)}`
+          `        pub ${prop.rustName}: ${mapTypeForInkStorage(
+            prop.rustType
+          )},`
       )
-      .join(",\n");
+      .join("\n");
+
+    const structBody = fields.trim() ? `\n${fields}\n    ` : "";
 
     structures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
-    pub struct ${response.name} {
-${fields}
-    }`);
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct ${response.name} {${structBody}}`);
   }
 
   // Generate concept structures
@@ -464,18 +480,22 @@ ${fields}
       )
       .map(
         (prop) =>
-          `        pub ${prop.rustName}: ${mapTypeForInkStorage(prop.rustType)}`
+          `        pub ${prop.rustName}: ${mapTypeForInkStorage(
+            prop.rustType
+          )},`
       )
-      .join(",\n");
+      .join("\n");
 
     if (fields.trim()) {
       const structName =
         concept.name === "Address" ? "PropertyAddress" : concept.name;
+      const structBody = fields.trim() ? `\n${fields}\n    ` : "";
       structures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
-    pub struct ${structName} {
-${fields}
-    }`);
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct ${structName} {${structBody}}`);
     }
   }
 
@@ -493,15 +513,24 @@ ${fields}
       )
       .map(
         (prop) =>
-          `        pub ${prop.rustName}: ${mapTypeForInkStorage(prop.rustType)}`
+          `        pub ${prop.rustName}: ${mapTypeForInkStorage(
+            prop.rustType
+          )},`
       )
-      .join(",\n");
+      .join("\n");
+
+    const allFields = fields
+      ? `        pub party_id: String,\n${fields}`
+      : `        pub party_id: String,`;
+
+    const structBody = allFields.trim() ? `\n${allFields}\n    ` : "";
 
     structures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
-    pub struct ${participant.name} {
-        pub party_id: String${fields ? ",\n" + fields : ""}
-    }`);
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct ${participant.name} {${structBody}}`);
   }
 
   return structures.join("\n\n");
@@ -523,19 +552,18 @@ function generateEnumStructures(contractTypes) {
   );
 
   for (const enumDef of businessEnums) {
-    const enumVariants = enumDef.values
-      .map((value) => `        ${value}`)
-      .join(",\n");
+    const allVariants = enumDef.values
+      .map((value) => `        ${value},`)
+      .join("\n");
 
     enumStructures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
     pub enum ${enumDef.name} {
         #[default]
-        ${enumDef.values[0]},
-${enumDef.values
-  .slice(1)
-  .map((value) => `        ${value}`)
-  .join(",\n")}
+${allVariants}
     }`);
   }
 
@@ -548,7 +576,10 @@ ${enumDef.values
  */
 function generateDraftDataStructures() {
   return `    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
     pub struct DraftRequest {
         pub requester: AccountId,
         pub template_data: String,
@@ -560,13 +591,28 @@ function generateDraftDataStructures() {
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
     pub enum DraftStatus {
         #[default]
         Pending,
         Processing,
         Ready,
         Failed,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct AmendmentRecord {
+        pub amended_by: AccountId,
+        pub amended_at: u64,
+        pub function_name: String,
+        pub request_id: u64,
     }`;
 }
 
@@ -600,17 +646,27 @@ function generateDraftEvents() {
         pub request_id: u64,
         pub error_message: String,
         pub timestamp: u64,
+    }
+
+    #[ink(event)]
+    pub struct AmendmentRecorded {
+        #[ink(topic)]
+        pub amendment_id: u64,
+        #[ink(topic)]
+        pub amended_by: AccountId,
+        pub function_name: String,
+        pub request_id: u64,
+        pub timestamp: u64,
     }`;
 }
 
 /**
- * Generate draft functionality implementation
+ * Generate draft/IPFS document functionality implementation
  * @returns {string} Draft-related contract methods
  */
 function generateDraftImplementation() {
-  return `        //
+  return `
         // === DRAFT REQUEST FUNCTIONALITY ===
-        //
         #[ink(message)]
         pub fn request_draft(&mut self, template_data: String) -> Result<u64> {
             if self.paused {
@@ -728,6 +784,80 @@ function generateDraftImplementation() {
 }
 
 /**
+ * Generate amendment tracking/audit trail functionality implementation
+ * @returns {string} Amendment tracking contract methods
+ */
+function generateAmendmentImplementation() {
+  return `
+        // === AMENDMENT TRACKING FUNCTIONALITY ===
+        
+        /// Record an amendment in the contract history
+        fn record_amendment(&mut self, function_name: &str, request_id: u64) {
+            let amendment = AmendmentRecord {
+                amended_by: self.env().caller(),
+                amended_at: self.env().block_timestamp(),
+                function_name: function_name.to_string(),
+                request_id,
+            };
+            
+            self.amendment_count = self.amendment_count.saturating_add(1);
+            self.amendment_history.insert(self.amendment_count, &amendment);
+            
+            self.env().emit_event(AmendmentRecorded {
+                amendment_id: self.amendment_count,
+                amended_by: amendment.amended_by,
+                function_name: function_name.to_string(),
+                request_id,
+                timestamp: amendment.amended_at,
+            });
+        }
+
+        #[ink(message)]
+        pub fn get_amendment_count(&self) -> u64 {
+            self.amendment_count
+        }
+
+        #[ink(message)]
+        pub fn get_amendment(&self, amendment_id: u64) -> Option<AmendmentRecord> {
+            self.amendment_history.get(amendment_id)
+        }
+
+        #[ink(message)]
+        pub fn get_amendment_history(&self, start: u64, limit: u64) -> Vec<AmendmentRecord> {
+            let mut amendments = Vec::new();
+            let end = start.saturating_add(limit).min(self.amendment_count.saturating_add(1));
+            
+            for i in start..end {
+                if let Some(amendment) = self.amendment_history.get(i) {
+                    amendments.push(amendment);
+                }
+            }
+            
+            amendments
+        }
+
+        #[ink(message)]
+        pub fn get_amendments_by_user(&self, user: AccountId, limit: u64) -> Vec<AmendmentRecord> {
+            let mut amendments = Vec::new();
+            let mut count = 0;
+            
+            for i in 1..=self.amendment_count {
+                if count >= limit {
+                    break;
+                }
+                if let Some(amendment) = self.amendment_history.get(i) {
+                    if amendment.amended_by == user {
+                        amendments.push(amendment);
+                        count = count.saturating_add(1);
+                    }
+                }
+            }
+            
+            amendments
+        }`;
+}
+
+/**
  * Map complex types to simple ink!-compatible types
  * @param {string} rustType - Original Rust type
  * @returns {string} ink!-compatible type
@@ -815,9 +945,12 @@ function generateContractImplementation(contractTypes, contractName) {
             )
         )
         .map(
-          (prop) => `${prop.rustName}: ${mapTypeForInkStorage(prop.rustType)}`
+          (prop) =>
+            `            ${prop.rustName}: ${mapTypeForInkStorage(
+              prop.rustType
+            )},`
         )
-        .join(",\n            ")
+        .join("\n")
     : "";
 
   // Generate constructor initialization
@@ -829,18 +962,21 @@ function generateContractImplementation(contractTypes, contractName) {
               prop.name
             )
         )
-        .map((prop) => `            ${prop.rustName}`)
-        .join(",\n")
+        .map((prop) => `                ${prop.rustName},`)
+        .join("\n")
     : "";
+
+  const constructorSignature =
+    templateModel && constructorParams
+      ? `pub fn new(\n${constructorParams}\n        ) -> Self`
+      : `pub fn new() -> Self`;
 
   let implementation = `    impl ${contractName} {
         #[ink(constructor)]
-        pub fn new(${constructorParams}) -> Self {
+        ${constructorSignature} {
             let caller = Self::env().caller();
             
-            Self::env().emit_event(ContractCreated {
-                owner: caller,
-            });
+            Self::env().emit_event(ContractCreated { owner: caller });
 
             Self {
                 owner: caller,
@@ -848,15 +984,17 @@ function generateContractImplementation(contractTypes, contractName) {
                 next_request_id: 1,
                 draft_requests: ink::storage::Mapping::default(),
                 user_drafts: ink::storage::Mapping::default(),
+                amendment_history: ink::storage::Mapping::default(),
+                amendment_count: 0,
 ${constructorInit}
             }
         }
 
         #[ink(constructor)]
         pub fn default() -> Self {
-            Self::new(${
+            ${
               templateModel
-                ? templateModel.properties
+                ? `Self::new(\n${templateModel.properties
                     .filter(
                       (prop) =>
                         ![
@@ -866,15 +1004,16 @@ ${constructorInit}
                           "$identifier",
                         ].includes(prop.name)
                     )
-                    .map((prop) =>
-                      generateDefaultValue(
-                        mapTypeForInkStorage(prop.rustType),
-                        contractTypes
-                      )
+                    .map(
+                      (prop) =>
+                        `                ${generateDefaultValue(
+                          mapTypeForInkStorage(prop.rustType),
+                          contractTypes
+                        )},`
                     )
-                    .join(", ")
-                : ""
-            })
+                    .join("\n")}\n            )`
+                : "Self::new()"
+            }
         }
 
         #[ink(message)]
@@ -925,9 +1064,10 @@ ${constructorInit}
       implementation += `
 
         #[ink(message)]
-        pub fn ${functionName}(&mut self, request: ${request.name}) -> Result<${
-        response.name
-      }> {
+        pub fn ${functionName}(
+            &mut self,
+            _request: ${request.name},
+        ) -> Result<${response.name}> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
@@ -954,11 +1094,14 @@ ${constructorInit}
                       `${prop.rustName}: ${generateDefaultValue(
                         mapTypeForInkStorage(prop.rustType),
                         contractTypes
-                      )}`
+                      )},`
                   )
-                  .join(",\n                ")}
+                  .join("\n                ")}
             };
             // === END CUSTOM LOGIC ===
+            
+            // Record amendment in history
+            self.record_amendment("${functionName}", request_id);
             
             self.env().emit_event(${response.name}Generated {
                 request_id,
@@ -1004,6 +1147,11 @@ ${constructorInit}
 
 ${generateDraftImplementation()}`;
 
+  // Add amendment tracking functionality
+  implementation += `
+
+${generateAmendmentImplementation()}`;
+
   implementation += `
     }`;
 
@@ -1036,7 +1184,18 @@ function isCopyType(rustType) {
     "f64",
   ];
 
-  return copyTypes.includes(rustType) || /^[ui]\d+$/.test(rustType);
+  // Check for basic copy types
+  if (copyTypes.includes(rustType) || /^[ui]\d+$/.test(rustType)) {
+    return true;
+  }
+
+  // Check for Option<T> where T is a copy type
+  if (rustType.startsWith("Option<") && rustType.endsWith(">")) {
+    const innerType = rustType.slice(7, -1); // Remove "Option<" and ">"
+    return isCopyType(innerType);
+  }
+
+  return false;
 }
 
 /**
@@ -1155,7 +1314,7 @@ function createInkLibRs(
 
 #[ink::contract]
 mod ${contractName.toLowerCase().replace(/[^a-z0-9_]/g, "_")} {
-    use ink::prelude::string::String;
+    use ink::prelude::string::{String, ToString};
     use ink::prelude::vec::Vec;
 
     // Error types
@@ -1732,6 +1891,8 @@ module.exports = {
   generateContractStorage,
   generateContractEvents,
   generateDataStructures,
+  generateDraftImplementation,
+  generateAmendmentImplementation,
   generateContractImplementation,
   createInkCargoToml,
   createInkLibRs,
