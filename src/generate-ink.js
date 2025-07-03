@@ -5,10 +5,43 @@
 const fs = require("fs");
 const path = require("path");
 const { ModelManager } = require("@accordproject/concerto-core");
-const { FileWriter } = require("@accordproject/concerto-util");
-const { CodeGen } = require("@accordproject/concerto-codegen");
-const { RustVisitor } = CodeGen;
 const { ensureDirectoryExists } = require("./utils");
+
+// Constants for commonly filtered property names
+const FILTERED_PROPERTY_NAMES = [
+  "$class",
+  "$timestamp",
+  "clauseId",
+  "$identifier",
+];
+const FILTERED_REQUEST_RESPONSE_PROPS = ["$class", "$timestamp"];
+const FILTERED_PARTICIPANT_PROPS = [
+  "$class",
+  "$timestamp",
+  "partyId",
+  "$identifier",
+];
+
+// Standard ink! derive attributes
+const STORAGE_DERIVES = `scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug`;
+const STORAGE_DERIVES_WITH_DEFAULT = `scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default`;
+const STORAGE_CFG_ATTR = `#[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]`;
+
+/**
+ * Generate standard storage structure attributes
+ * @param {boolean} includeDefault - Whether to include Default derive
+ * @returns {string} Complete attribute string
+ */
+function generateStorageAttributes(includeDefault = false) {
+  const derives = includeDefault
+    ? STORAGE_DERIVES_WITH_DEFAULT
+    : STORAGE_DERIVES;
+  return `    #[derive(${derives})]
+    ${STORAGE_CFG_ATTR}`;
+}
 
 /**
  * Load all .cto files from a specific template archive
@@ -340,8 +373,7 @@ function generateContractStorage(contractTypes, contractName) {
   if (contractTypes.templateModels.length > 0) {
     const templateModel = contractTypes.templateModels[0];
     const filteredProperties = templateModel.properties.filter(
-      (prop) =>
-        !["$class", "$timestamp", "clauseId", "$identifier"].includes(prop.name)
+      (prop) => !FILTERED_PROPERTY_NAMES.includes(prop.name)
     );
 
     for (const prop of filteredProperties) {
@@ -425,7 +457,7 @@ function generateDataStructures(contractTypes) {
     generatedTypes.add(request.name);
 
     const fields = request.properties
-      .filter((prop) => !["$class", "$timestamp"].includes(prop.name))
+      .filter((prop) => !FILTERED_REQUEST_RESPONSE_PROPS.includes(prop.name))
       .map(
         (prop) =>
           `        pub ${prop.rustName}: ${mapTypeForInkStorage(
@@ -436,11 +468,7 @@ function generateDataStructures(contractTypes) {
 
     const structBody = fields.trim() ? `\n${fields}\n    ` : "";
 
-    structures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    structures.push(`${generateStorageAttributes(false)}
     pub struct ${request.name} {${structBody}}`);
   }
 
@@ -450,7 +478,7 @@ function generateDataStructures(contractTypes) {
     generatedTypes.add(response.name);
 
     const fields = response.properties
-      .filter((prop) => !["$class", "$timestamp"].includes(prop.name))
+      .filter((prop) => !FILTERED_REQUEST_RESPONSE_PROPS.includes(prop.name))
       .map(
         (prop) =>
           `        pub ${prop.rustName}: ${mapTypeForInkStorage(
@@ -461,11 +489,7 @@ function generateDataStructures(contractTypes) {
 
     const structBody = fields.trim() ? `\n${fields}\n    ` : "";
 
-    structures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    structures.push(`${generateStorageAttributes(false)}
     pub struct ${response.name} {${structBody}}`);
   }
 
@@ -490,11 +514,7 @@ function generateDataStructures(contractTypes) {
       const structName =
         concept.name === "Address" ? "PropertyAddress" : concept.name;
       const structBody = fields.trim() ? `\n${fields}\n    ` : "";
-      structures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+      structures.push(`${generateStorageAttributes(true)}
     pub struct ${structName} {${structBody}}`);
     }
   }
@@ -505,12 +525,7 @@ function generateDataStructures(contractTypes) {
     generatedTypes.add(participant.name);
 
     const fields = participant.properties
-      .filter(
-        (prop) =>
-          !["$class", "$timestamp", "partyId", "$identifier"].includes(
-            prop.name
-          )
-      )
+      .filter((prop) => !FILTERED_PARTICIPANT_PROPS.includes(prop.name))
       .map(
         (prop) =>
           `        pub ${prop.rustName}: ${mapTypeForInkStorage(
@@ -525,11 +540,7 @@ function generateDataStructures(contractTypes) {
 
     const structBody = allFields.trim() ? `\n${allFields}\n    ` : "";
 
-    structures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    structures.push(`${generateStorageAttributes(true)}
     pub struct ${participant.name} {${structBody}}`);
   }
 
@@ -552,15 +563,16 @@ function generateEnumStructures(contractTypes) {
   );
 
   for (const enumDef of businessEnums) {
+    // Convert enum variants to proper PascalCase (capitalize first letter)
     const allVariants = enumDef.values
-      .map((value) => `        ${value},`)
+      .map((value) => {
+        // Capitalize first letter to follow Rust naming conventions
+        const pascalCase = value.charAt(0).toUpperCase() + value.slice(1);
+        return `        ${pascalCase},`;
+      })
       .join("\n");
 
-    enumStructures.push(`    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    enumStructures.push(`${generateStorageAttributes(true)}
     pub enum ${enumDef.name} {
         #[default]
 ${allVariants}
@@ -575,11 +587,7 @@ ${allVariants}
  * @returns {string} Draft-related data structures
  */
 function generateDraftDataStructures() {
-  return `    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+  return `${generateStorageAttributes(false)}
     pub struct DraftRequest {
         pub requester: AccountId,
         pub template_data: String,
@@ -590,11 +598,7 @@ function generateDraftDataStructures() {
         pub updated_at: u64,
     }
 
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+${generateStorageAttributes(true)}
     pub enum DraftStatus {
         #[default]
         Pending,
@@ -777,11 +781,7 @@ function generateDraftImplementation() {
  */
 function generateAuditLogTypes() {
   return `
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+${generateStorageAttributes(false)}
     pub struct AuditLogEntry {
         pub caller: AccountId,
         pub timestamp: u64,
@@ -867,32 +867,7 @@ function generateAuditLogImplementation() {
             });
         }
 
-        /// Helper macro-like function to track field changes for String types
-        fn update_string_field(&mut self, field_name: &str, current_value: &mut String, new_value: String) {
-            if *current_value != new_value {
-                self.log_field_change(field_name, current_value, &new_value);
-                *current_value = new_value;
-            }
-        }
 
-        /// Helper macro-like function to track field changes for u128 types
-        fn update_numeric_field(&mut self, field_name: &str, current_value: &mut u128, new_value: u128) {
-            if *current_value != new_value {
-                // Convert to strings manually to avoid format! dependency
-                let old_str = current_value.to_string();
-                let new_str = new_value.to_string();
-                self.log_field_change(field_name, &old_str, &new_str);
-                *current_value = new_value;
-            }
-        }
-
-        /// Helper macro-like function to track field changes for boolean types
-        fn update_bool_field(&mut self, field_name: &str, current_value: &mut bool, new_value: bool) {
-            if *current_value != new_value {
-                self.log_field_change(field_name, &current_value.to_string(), &new_value.to_string());
-                *current_value = new_value;
-            }
-        }
 
         #[ink(message)]
         pub fn get_audit_log_count(&self) -> u64 {
@@ -912,6 +887,39 @@ function generateAuditLogImplementation() {
             
             entries
         }`;
+}
+
+/**
+ * Generate human-readable description for a type
+ * @param {string} rustType - Rust type to describe
+ * @returns {string} Human-readable type description
+ */
+function generateHumanReadableType(rustType) {
+  if (rustType.startsWith("Vec<")) {
+    const innerType = rustType.slice(4, -1);
+    return `${generateHumanReadableType(innerType)}_list`;
+  }
+  if (rustType.startsWith("Option<")) {
+    const innerType = rustType.slice(7, -1);
+    return `optional_${generateHumanReadableType(innerType)}`;
+  }
+
+  // Convert type names to more readable forms
+  const typeMap = {
+    PropertyAddress: "address",
+    Money: "amount",
+    Party: "party_info",
+    ContractStatus: "status",
+    CurrencyCode: "currency",
+    Country: "country",
+    u128: "number",
+    u64: "number",
+    u32: "number",
+    bool: "boolean",
+    String: "text",
+  };
+
+  return typeMap[rustType] || rustType.toLowerCase();
 }
 
 /**
@@ -1053,13 +1061,7 @@ ${constructorInit}
               templateModel
                 ? `Self::new(\n${templateModel.properties
                     .filter(
-                      (prop) =>
-                        ![
-                          "$class",
-                          "$timestamp",
-                          "clauseId",
-                          "$identifier",
-                        ].includes(prop.name)
+                      (prop) => !FILTERED_PROPERTY_NAMES.includes(prop.name)
                     )
                     .map(
                       (prop) =>
@@ -1208,18 +1210,47 @@ ${constructorInit}
       const mappedType = mapTypeForInkStorage(prop.rustType);
       const fieldName = prop.rustName;
 
-      // Determine which update helper to use based on type
+      // Inline the update logic to avoid borrow checker issues
       let updateMethod;
       if (mappedType === "String") {
-        updateMethod = `self.update_string_field("${fieldName}", &mut self.${fieldName}, new_value);`;
+        updateMethod = `if self.${fieldName} != new_value {
+                let old_value = self.${fieldName}.clone();
+                self.log_field_change("${fieldName}", &old_value, &new_value);
+                self.${fieldName} = new_value;
+            } else {
+                self.${fieldName} = new_value;
+            }`;
       } else if (mappedType === "bool") {
-        updateMethod = `self.update_bool_field("${fieldName}", &mut self.${fieldName}, new_value);`;
+        updateMethod = `if self.${fieldName} != new_value {
+                let old_value = self.${fieldName}.to_string();
+                let new_value_str = new_value.to_string();
+                self.log_field_change("${fieldName}", &old_value, &new_value_str);
+                self.${fieldName} = new_value;
+            } else {
+                self.${fieldName} = new_value;
+            }`;
       } else if (mappedType.match(/^u\d+$/) || mappedType.match(/^i\d+$/)) {
-        updateMethod = `self.update_numeric_field("${fieldName}", &mut self.${fieldName}, new_value);`;
+        updateMethod = `if self.${fieldName} != new_value {
+                let old_str = self.${fieldName}.to_string();
+                let new_str = new_value.to_string();
+                self.log_field_change("${fieldName}", &old_str, &new_str);
+                self.${fieldName} = new_value;
+            } else {
+                self.${fieldName} = new_value;
+            }`;
+      } else if (mappedType.startsWith("Option<")) {
+        // For optional types, track presence/absence changes meaningfully
+        updateMethod = `let old_value = if self.${fieldName}.is_some() { "Some(value)" } else { "None" };
+            let new_value_str = if new_value.is_some() { "Some(value)" } else { "None" };
+            if old_value != new_value_str {
+                self.log_field_change("${fieldName}", old_value, new_value_str);
+            }
+            self.${fieldName} = new_value;`;
       } else {
-        // For complex types, log the change without detailed comparison
-        updateMethod = `
-            self.log_field_change("${fieldName}", "${mappedType}_changed", "${mappedType}_updated");
+        // For complex types, log the change with meaningful descriptions
+        updateMethod = `self.log_field_change("${fieldName}", "${generateHumanReadableType(
+          mappedType
+        )}_updated", "${generateHumanReadableType(mappedType)}_modified");
             self.${fieldName} = new_value;`;
       }
 
@@ -1241,6 +1272,11 @@ ${constructorInit}
         }`;
     }
   }
+
+  // Add collection utilities
+  implementation += `
+
+${generateCollectionManagementMethods(contractTypes)}`;
 
   // Add draft functionality
   implementation += `
@@ -1333,7 +1369,10 @@ function generateDefaultValue(rustType, contractTypes = null) {
     // Check if this is an enum type
     const enumDef = contractTypes.enums.find((e) => e.name === rustType);
     if (enumDef && enumDef.values.length > 0) {
-      return `${rustType}::${enumDef.values[0]}`;
+      // Use PascalCase for enum variants
+      const firstVariant =
+        enumDef.values[0].charAt(0).toUpperCase() + enumDef.values[0].slice(1);
+      return `${rustType}::${firstVariant}`;
     }
   }
   // For other custom types (structs, etc.), use Default::default()
@@ -1418,7 +1457,6 @@ function createInkLibRs(
 mod ${contractName.toLowerCase().replace(/[^a-z0-9_]/g, "_")} {
     use ink::prelude::string::{String, ToString};
     use ink::prelude::vec::Vec;
-    use ink::prelude::format;
 
     // Error types
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -1954,6 +1992,109 @@ function showHelp() {
 }
 
 /**
+ * Check if a type has an ID field for removal operations
+ * @param {string} typeName - Name of the type to check
+ * @param {Object} contractTypes - Contract type information
+ * @returns {string|null} ID field name if found, null otherwise
+ */
+function getIdField(typeName, contractTypes) {
+  // Find the type definition
+  const allTypes = [
+    ...(contractTypes.conceptTypes || []),
+    ...(contractTypes.participantTypes || []),
+    ...(contractTypes.assetTypes || []),
+  ];
+
+  const typeDef = allTypes.find((type) => type.name === typeName);
+  if (!typeDef) return null;
+
+  // Look for ID fields (common patterns)
+  const idField = typeDef.properties.find(
+    (prop) =>
+      prop.name.endsWith("Id") ||
+      prop.name === "id" ||
+      prop.name === "identifier"
+  );
+
+  return idField ? idField.rustName : null;
+}
+
+/**
+ * Generate minimal, generic collection utilities for Vec<T> fields
+ * @param {Object} contractTypes - Contract type information
+ * @returns {string} Generated collection utilities
+ */
+function generateCollectionManagementMethods(contractTypes) {
+  if (
+    !contractTypes.templateModels ||
+    contractTypes.templateModels.length === 0
+  ) {
+    return "";
+  }
+
+  const templateModel = contractTypes.templateModels[0];
+  let methods = "";
+
+  // Find Vec<T> fields in the template model
+  const vecFields = templateModel.properties.filter(
+    (prop) =>
+      !FILTERED_PROPERTY_NAMES.includes(prop.name) &&
+      prop.rustType.startsWith("Vec<")
+  );
+
+  for (const field of vecFields) {
+    const fieldName = field.rustName;
+    const vecType = field.rustType.match(/Vec<(.+)>/)[1]; // Extract T from Vec<T>
+    const singularName = fieldName.endsWith("s")
+      ? fieldName.slice(0, -1)
+      : fieldName;
+
+    // Only generate utilities for complex types (not primitive types)
+    if (!["String", "u64", "u128", "bool"].includes(vecType)) {
+      methods += `
+        // === ${fieldName.toUpperCase()} COLLECTION UTILITIES ===
+
+        #[ink(message)]
+        pub fn get_${fieldName}_count(&self) -> u32 {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                self.${fieldName}.len() as u32
+            }
+        }`;
+
+      // Check if the type has an ID field for removal operations
+      const idField = getIdField(vecType, contractTypes);
+      if (idField) {
+        methods += `
+
+        #[ink(message)]
+        pub fn remove_${singularName}_by_id(&mut self, ${idField}: String) -> Result<bool> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+
+            let original_len = self.${fieldName}.len();
+            self.${fieldName}.retain(|item| item.${idField} != ${idField});
+            
+            let removed = self.${fieldName}.len() < original_len;
+            if removed {
+                self.log_field_change("${fieldName}", "item_removed", &format!("Removed ${singularName}: {}", ${idField}));
+            }
+            Ok(removed)
+        }`;
+      }
+    }
+  }
+
+  return methods;
+}
+
+/**
  * Main function
  */
 async function main() {
@@ -2000,10 +2141,12 @@ module.exports = {
   generateDataStructures,
   generateDraftImplementation,
   generateAuditLogImplementation,
+  generateCollectionManagementMethods,
   generateContractImplementation,
   createInkCargoToml,
   createInkLibRs,
   createInkReadme,
+  getIdField,
 };
 
 // Run if called directly
