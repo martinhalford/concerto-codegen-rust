@@ -354,15 +354,6 @@ function generateContractStorage(contractTypes, contractName) {
   storageFields.push("        owner: AccountId");
   storageFields.push("        paused: bool");
 
-  // Add draft functionality storage
-  storageFields.push("        next_request_id: u64");
-  storageFields.push(
-    "        draft_requests: ink::storage::Mapping<u64, DraftRequest>"
-  );
-  storageFields.push(
-    "        user_drafts: ink::storage::Mapping<AccountId, Vec<u64>>"
-  );
-
   // Add audit log storage
   storageFields.push(
     "        audit_log: ink::storage::Mapping<u64, AuditLogEntry>"
@@ -580,190 +571,6 @@ ${allVariants}
   }
 
   return enumStructures.join("\n\n");
-}
-
-/**
- * Generate draft functionality data structures
- * @returns {string} Draft-related data structures
- */
-function generateDraftDataStructures() {
-  return `${generateStorageAttributes(false)}
-    pub struct DraftRequest {
-        pub requester: AccountId,
-        pub template_data: String,
-        pub status: DraftStatus,
-        pub ipfs_hash: Option<String>,
-        pub error_message: Option<String>,
-        pub created_at: u64,
-        pub updated_at: u64,
-    }
-
-${generateStorageAttributes(true)}
-    pub enum DraftStatus {
-        #[default]
-        Pending,
-        Processing,
-        Ready,
-        Failed,
-    }
-
-`;
-}
-
-/**
- * Generate draft functionality events
- * @returns {string} Draft-related events
- */
-function generateDraftEvents() {
-  return `    #[ink(event)]
-    pub struct DraftRequested {
-        #[ink(topic)]
-        pub requester: AccountId,
-        pub request_id: u64,
-        pub template_data: String,
-        pub timestamp: u64,
-    }
-
-    #[ink(event)]
-    pub struct DraftReady {
-        #[ink(topic)]
-        pub requester: AccountId,
-        pub request_id: u64,
-        pub ipfs_hash: String,
-        pub timestamp: u64,
-    }
-
-    #[ink(event)]
-    pub struct DraftError {
-        #[ink(topic)]
-        pub requester: AccountId,
-        pub request_id: u64,
-        pub error_message: String,
-        pub timestamp: u64,
-    }`;
-}
-
-/**
- * Generate draft/IPFS document functionality implementation
- * @returns {string} Draft-related contract methods
- */
-function generateDraftImplementation() {
-  return `
-        // === DRAFT REQUEST FUNCTIONALITY ===
-        #[ink(message)]
-        pub fn request_draft(&mut self, template_data: String) -> Result<u64> {
-            if self.paused {
-                return Err(ContractError::ContractPaused);
-            }
-
-            let caller = self.env().caller();
-            let request_id = self.next_request_id;
-            let timestamp = self.env().block_timestamp();
-
-            let draft_request = DraftRequest {
-                requester: caller,
-                template_data: template_data.clone(),
-                status: DraftStatus::Pending,
-                ipfs_hash: None,
-                error_message: None,
-                created_at: timestamp,
-                updated_at: timestamp,
-            };
-
-            // Store the draft request
-            self.draft_requests.insert(request_id, &draft_request);
-
-            // Add to user's draft list
-            let mut user_drafts = self.user_drafts.get(caller).unwrap_or_default();
-            user_drafts.push(request_id);
-            self.user_drafts.insert(caller, &user_drafts);
-
-            // Increment request ID for next request (with overflow protection)
-            self.next_request_id = self.next_request_id.saturating_add(1);
-
-            // Emit event for off-chain service to pick up
-            self.env().emit_event(DraftRequested {
-                requester: caller,
-                request_id,
-                template_data,
-                timestamp,
-            });
-
-            Ok(request_id)
-        }
-
-        #[ink(message)]
-        pub fn submit_draft_result(&mut self, request_id: u64, ipfs_hash: String) -> Result<()> {
-            // Only owner (or authorized service) can submit results
-            let caller = self.env().caller();
-            if caller != self.owner {
-                return Err(ContractError::Unauthorized);
-            }
-
-            let mut draft_request = self
-                .draft_requests
-                .get(request_id)
-                .ok_or(ContractError::InvalidInput)?;
-
-            draft_request.status = DraftStatus::Ready;
-            draft_request.ipfs_hash = Some(ipfs_hash.clone());
-            draft_request.updated_at = self.env().block_timestamp();
-
-            self.draft_requests.insert(request_id, &draft_request);
-
-            self.env().emit_event(DraftReady {
-                requester: draft_request.requester,
-                request_id,
-                ipfs_hash,
-                timestamp: draft_request.updated_at,
-            });
-
-            Ok(())
-        }
-
-        #[ink(message)]
-        pub fn submit_draft_error(&mut self, request_id: u64, error_message: String) -> Result<()> {
-            let caller = self.env().caller();
-            if caller != self.owner {
-                return Err(ContractError::Unauthorized);
-            }
-
-            let mut draft_request = self
-                .draft_requests
-                .get(request_id)
-                .ok_or(ContractError::InvalidInput)?;
-
-            draft_request.status = DraftStatus::Failed;
-            draft_request.error_message = Some(error_message.clone());
-            draft_request.updated_at = self.env().block_timestamp();
-
-            self.draft_requests.insert(request_id, &draft_request);
-
-            self.env().emit_event(DraftError {
-                requester: draft_request.requester,
-                request_id,
-                error_message,
-                timestamp: draft_request.updated_at,
-            });
-
-            Ok(())
-        }
-
-        #[ink(message)]
-        pub fn get_draft_request(&self, request_id: u64) -> Option<DraftRequest> {
-            self.draft_requests.get(request_id)
-        }
-
-        #[ink(message)]
-        pub fn get_user_drafts(&self, user: AccountId) -> Vec<u64> {
-            self.user_drafts.get(user).unwrap_or_default()
-        }
-
-        #[ink(message)]
-        pub fn get_my_drafts(&self) -> Vec<u64> {
-            let caller = self.env().caller();
-            self.user_drafts.get(caller).unwrap_or_default()
-        }`;
 }
 
 /**
@@ -1046,9 +853,6 @@ function generateContractImplementation(contractTypes, contractName) {
             Self {
                 owner: caller,
                 paused: false,
-                next_request_id: 1,
-                draft_requests: ink::storage::Mapping::default(),
-                user_drafts: ink::storage::Mapping::default(),
                 audit_log: ink::storage::Mapping::default(),
                 audit_log_count: 0,
 ${constructorInit}
@@ -1278,11 +1082,6 @@ ${constructorInit}
 
 ${generateCollectionManagementMethods(contractTypes)}`;
 
-  // Add draft functionality
-  implementation += `
-
-${generateDraftImplementation()}`;
-
   // Add audit log functionality
   implementation += `
 
@@ -1440,11 +1239,9 @@ function createInkLibRs(
 ) {
   const dataStructures = generateDataStructures(contractTypes);
   const enumStructures = generateEnumStructures(contractTypes);
-  const draftDataStructures = generateDraftDataStructures();
   const auditLogTypes = generateAuditLogTypes();
   const contractStorage = generateContractStorage(contractTypes, contractName);
   const contractEvents = generateContractEvents(contractTypes);
-  const draftEvents = generateDraftEvents();
   const auditLogEvents = generateAuditLogEvents();
   const contractImpl = generateContractImplementation(
     contractTypes,
@@ -1474,15 +1271,11 @@ ${dataStructures}
 
 ${enumStructures}
 
-${draftDataStructures}
-
 ${auditLogTypes}
 
 ${contractStorage}
 
 ${contractEvents}
-
-${draftEvents}
 
 ${auditLogEvents}
 
@@ -2139,7 +1932,6 @@ module.exports = {
   generateContractStorage,
   generateContractEvents,
   generateDataStructures,
-  generateDraftImplementation,
   generateAuditLogImplementation,
   generateCollectionManagementMethods,
   generateContractImplementation,
