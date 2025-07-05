@@ -201,7 +201,6 @@ mod propertysale {
         Cancel,
     }
 
-
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
     #[cfg_attr(
         feature = "std",
@@ -308,7 +307,6 @@ mod propertysale {
         pub success: bool,
     }
 
-
     #[ink(event)]
     pub struct FunctionCalled {
         #[ink(topic)]
@@ -344,7 +342,7 @@ mod propertysale {
             status: ContractStatus,
         ) -> Self {
             let caller = Self::env().caller();
-            
+
             Self::env().emit_event(ContractCreated { owner: caller });
 
             Self {
@@ -393,7 +391,7 @@ mod propertysale {
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             self.paused = true;
             self.env().emit_event(ContractPaused { by: caller });
             Ok(())
@@ -405,7 +403,7 @@ mod propertysale {
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             self.paused = false;
             self.env().emit_event(ContractUnpaused { by: caller });
             Ok(())
@@ -414,33 +412,124 @@ mod propertysale {
         #[ink(message)]
         pub fn amend_contract(
             &mut self,
-            _request: AmendContractRequest,
+            request: AmendContractRequest,
         ) -> Result<AmendContractResponse> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
 
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+
             let request_id = self.env().block_number() as u64;
-            
+
             self.env().emit_event(AmendContractRequestSubmitted {
-                submitter: self.env().caller(),
+                submitter: caller,
                 request_id,
             });
 
             // === BEGIN CUSTOM LOGIC ===
-            // TODO: Implement your amend contract logic here
+            let mut changes_made = false;
+
+            // Update sellers if provided
+            if let Some(sellers) = request.sellers {
+                self.log_field_change("sellers", "previous_sellers", "updated_sellers");
+                self.sellers = sellers;
+                changes_made = true;
+            }
+
+            // Update buyers if provided
+            if let Some(buyers) = request.buyers {
+                self.log_field_change("buyers", "previous_buyers", "updated_buyers");
+                self.buyers = buyers;
+                changes_made = true;
+            }
+
+            // Update property address if provided
+            if let Some(property_address) = request.property_address {
+                self.log_field_change("property_address", "previous_address", "updated_address");
+                self.property_address = property_address;
+                changes_made = true;
+            }
+
+            // Update purchase price if provided
+            if let Some(purchase_price) = request.purchase_price {
+                let old_value = if self.purchase_price.is_some() {
+                    "Some(value)"
+                } else {
+                    "None"
+                };
+                let new_value_str = "Some(value)";
+                if old_value != new_value_str {
+                    self.log_field_change("purchase_price", old_value, new_value_str);
+                }
+                self.purchase_price = Some(purchase_price);
+                changes_made = true;
+            }
+
+            // Update deposit if provided
+            if let Some(deposit) = request.deposit {
+                let old_value = if self.deposit.is_some() {
+                    "Some(value)"
+                } else {
+                    "None"
+                };
+                let new_value_str = "Some(value)";
+                if old_value != new_value_str {
+                    self.log_field_change("deposit", old_value, new_value_str);
+                }
+                self.deposit = Some(deposit);
+                changes_made = true;
+            }
+
+            // Update balance if provided
+            if let Some(balance) = request.balance {
+                let old_value = if self.balance.is_some() {
+                    "Some(value)"
+                } else {
+                    "None"
+                };
+                let new_value_str = "Some(value)";
+                if old_value != new_value_str {
+                    self.log_field_change("balance", old_value, new_value_str);
+                }
+                self.balance = Some(balance);
+                changes_made = true;
+            }
+
+            // Update agreement date if provided
+            if let Some(agreement_date) = request.agreement_date {
+                let old_value = if self.agreement_date.is_some() {
+                    "Some(value)"
+                } else {
+                    "None"
+                };
+                let new_value_str = "Some(value)";
+                if old_value != new_value_str {
+                    self.log_field_change("agreement_date", old_value, new_value_str);
+                }
+                self.agreement_date = Some(agreement_date);
+                changes_made = true;
+            }
+
             let response = AmendContractResponse {
-                success: false,
-                error_message: None,
+                success: changes_made,
+                error_message: if changes_made {
+                    None
+                } else {
+                    Some("No changes provided in amendment request".to_string())
+                },
             };
             // === END CUSTOM LOGIC ===
-            
+
             // Log function call for audit trail
             self.log_function_call("amend_contract", request_id);
-            
+
             self.env().emit_event(AmendContractResponseGenerated {
                 request_id,
-                success: true,
+                success: changes_made,
             });
 
             Ok(response)
@@ -456,7 +545,7 @@ mod propertysale {
             }
 
             let request_id = self.env().block_number() as u64;
-            
+
             self.env().emit_event(ChangeStatusRequestSubmitted {
                 submitter: self.env().caller(),
                 request_id,
@@ -469,10 +558,10 @@ mod propertysale {
                 error_message: None,
             };
             // === END CUSTOM LOGIC ===
-            
+
             // Log function call for audit trail
             self.log_function_call("change_status", request_id);
-            
+
             self.env().emit_event(ChangeStatusResponseGenerated {
                 request_id,
                 success: true,
@@ -491,7 +580,7 @@ mod propertysale {
             }
 
             let request_id = self.env().block_number() as u64;
-            
+
             self.env().emit_event(ManageOfferRequestSubmitted {
                 submitter: self.env().caller(),
                 request_id,
@@ -504,10 +593,10 @@ mod propertysale {
                 error_message: None,
             };
             // === END CUSTOM LOGIC ===
-            
+
             // Log function call for audit trail
             self.log_function_call("manage_offer", request_id);
-            
+
             self.env().emit_event(ManageOfferResponseGenerated {
                 request_id,
                 success: true,
@@ -526,7 +615,7 @@ mod propertysale {
             }
 
             let request_id = self.env().block_number() as u64;
-            
+
             self.env().emit_event(SignContractRequestSubmitted {
                 submitter: self.env().caller(),
                 request_id,
@@ -539,10 +628,10 @@ mod propertysale {
                 error_message: None,
             };
             // === END CUSTOM LOGIC ===
-            
+
             // Log function call for audit trail
             self.log_function_call("sign_contract", request_id);
-            
+
             self.env().emit_event(SignContractResponseGenerated {
                 request_id,
                 success: true,
@@ -596,13 +685,17 @@ mod propertysale {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
-            self.log_field_change("sellers", "party_info_list_updated", "party_info_list_modified");
+
+            self.log_field_change(
+                "sellers",
+                "party_info_list_updated",
+                "party_info_list_modified",
+            );
             self.sellers = new_value;
             Ok(())
         }
@@ -612,13 +705,17 @@ mod propertysale {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
-            self.log_field_change("buyers", "party_info_list_updated", "party_info_list_modified");
+
+            self.log_field_change(
+                "buyers",
+                "party_info_list_updated",
+                "party_info_list_modified",
+            );
             self.buyers = new_value;
             Ok(())
         }
@@ -628,12 +725,12 @@ mod propertysale {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             self.log_field_change("property_address", "address_updated", "address_modified");
             self.property_address = new_value;
             Ok(())
@@ -644,14 +741,22 @@ mod propertysale {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
-            let old_value = if self.purchase_price.is_some() { "Some(value)" } else { "None" };
-            let new_value_str = if new_value.is_some() { "Some(value)" } else { "None" };
+
+            let old_value = if self.purchase_price.is_some() {
+                "Some(value)"
+            } else {
+                "None"
+            };
+            let new_value_str = if new_value.is_some() {
+                "Some(value)"
+            } else {
+                "None"
+            };
             if old_value != new_value_str {
                 self.log_field_change("purchase_price", old_value, new_value_str);
             }
@@ -664,14 +769,22 @@ mod propertysale {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
-            let old_value = if self.deposit.is_some() { "Some(value)" } else { "None" };
-            let new_value_str = if new_value.is_some() { "Some(value)" } else { "None" };
+
+            let old_value = if self.deposit.is_some() {
+                "Some(value)"
+            } else {
+                "None"
+            };
+            let new_value_str = if new_value.is_some() {
+                "Some(value)"
+            } else {
+                "None"
+            };
             if old_value != new_value_str {
                 self.log_field_change("deposit", old_value, new_value_str);
             }
@@ -684,14 +797,22 @@ mod propertysale {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
-            let old_value = if self.balance.is_some() { "Some(value)" } else { "None" };
-            let new_value_str = if new_value.is_some() { "Some(value)" } else { "None" };
+
+            let old_value = if self.balance.is_some() {
+                "Some(value)"
+            } else {
+                "None"
+            };
+            let new_value_str = if new_value.is_some() {
+                "Some(value)"
+            } else {
+                "None"
+            };
             if old_value != new_value_str {
                 self.log_field_change("balance", old_value, new_value_str);
             }
@@ -704,14 +825,22 @@ mod propertysale {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
-            let old_value = if self.agreement_date.is_some() { "Some(value)" } else { "None" };
-            let new_value_str = if new_value.is_some() { "Some(value)" } else { "None" };
+
+            let old_value = if self.agreement_date.is_some() {
+                "Some(value)"
+            } else {
+                "None"
+            };
+            let new_value_str = if new_value.is_some() {
+                "Some(value)"
+            } else {
+                "None"
+            };
             if old_value != new_value_str {
                 self.log_field_change("agreement_date", old_value, new_value_str);
             }
@@ -724,17 +853,16 @@ mod propertysale {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             self.log_field_change("status", "status_updated", "status_modified");
             self.status = new_value;
             Ok(())
         }
-
 
         // === SELLERS COLLECTION UTILITIES ===
 
@@ -755,25 +883,24 @@ mod propertysale {
             }
         }
 
-
         // === AUDIT LOG FUNCTIONALITY ===
-        
+
         /// Record a function call in the audit log
         fn log_function_call(&mut self, function_name: &str, request_id: u64) {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
-            
+
             let log_entry = AuditLogEntry {
                 caller,
                 timestamp,
                 function_name: function_name.to_string(),
                 request_id,
             };
-            
+
             // Store with current count as index, then increment
             self.audit_log.insert(self.audit_log_count, &log_entry);
             self.audit_log_count = self.audit_log_count.saturating_add(1);
-            
+
             self.env().emit_event(FunctionCalled {
                 caller,
                 function_name: function_name.to_string(),
@@ -787,7 +914,7 @@ mod propertysale {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
             let block_number = self.env().block_number() as u64;
-            
+
             self.env().emit_event(ContractDataChanged {
                 field_name: field_name.to_string(),
                 changed_by: caller,
@@ -798,8 +925,6 @@ mod propertysale {
             });
         }
 
-
-
         #[ink(message)]
         pub fn get_audit_log_count(&self) -> u64 {
             self.audit_log_count
@@ -809,13 +934,13 @@ mod propertysale {
         pub fn get_audit_log(&self, start: u64, limit: u64) -> Vec<AuditLogEntry> {
             let mut entries = Vec::new();
             let end = start.saturating_add(limit).min(self.audit_log_count);
-            
+
             for i in start..end {
                 if let Some(entry) = self.audit_log.get(i) {
                     entries.push(entry);
                 }
             }
-            
+
             entries
         }
     }
