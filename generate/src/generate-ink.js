@@ -1517,7 +1517,7 @@ async function generateInkContract(archivesDir, outputDir, templateName) {
   try {
     console.log("🦑 Starting ink! smart contract generation...\n");
     console.log(`📁 Archives directory: ${archivesDir}`);
-    console.log(`📤 Output directory: ${outputDir}`);
+    console.log(`📤 Output directory: ${outputDir}/${templateName}`);
     console.log("\n");
 
     // Load model files
@@ -1666,22 +1666,23 @@ async function generateInkContract(archivesDir, outputDir, templateName) {
         ? contractTypes.templateModels[0].name.replace(/Clause$/, "Contract")
         : "ConcertoContract";
 
-    // Create output directory structure
-    ensureDirectoryExists(outputDir);
-    const srcDir = path.join(outputDir, "src");
-    ensureDirectoryExists(srcDir);
-
     // Generate ink! contract files
     const packageName = getPackageNameFromJson(archivesDir, templateName);
 
-    createInkCargoToml(outputDir, packageName);
+    // Create template-specific output directory
+    const templateOutputDir = path.join(outputDir, templateName);
+    ensureDirectoryExists(templateOutputDir);
+    const srcDir = path.join(templateOutputDir, "src");
+    ensureDirectoryExists(srcDir);
+
+    createInkCargoToml(templateOutputDir, packageName);
     createInkLibRs(srcDir, contractTypes, contractName);
-    createInkReadme(outputDir, contractName, contractTypes);
+    createInkReadme(templateOutputDir, contractName, contractTypes);
 
     console.log("✅ ink! smart contract generation completed successfully!\n");
-    console.log(`📁 Generated contract in: ${outputDir}`);
+    console.log(`📁 Generated contract in: ${templateOutputDir}`);
     console.log("\n🚀 Next steps:");
-    console.log("1. cd " + outputDir);
+    console.log("1. cd " + templateOutputDir);
     console.log("2. cargo contract build");
     console.log("3. cargo test");
     console.log("4. Deploy to a Substrate blockchain with contracts pallet\n");
@@ -1698,8 +1699,8 @@ async function generateInkContract(archivesDir, outputDir, templateName) {
  */
 function parseArguments(args) {
   const config = {
-    archivesDir: path.join(__dirname, "..", "archives"),
-    outputDir: path.join(__dirname, "..", "output"),
+    archivesDir: path.join(__dirname, "..", "..", "archives"),
+    outputDir: path.join(__dirname, "..", "..", "output"),
     templateName: null,
     help: false,
   };
@@ -1725,12 +1726,12 @@ function parseArguments(args) {
       // Positional arguments (backwards compatibility)
       if (
         !config.archivesDir ||
-        config.archivesDir === path.join(__dirname, "..", "archives")
+        config.archivesDir === path.join(__dirname, "..", "..", "archives")
       ) {
         config.archivesDir = path.resolve(arg);
       } else if (
         !config.outputDir ||
-        config.outputDir === path.join(__dirname, "..", "output")
+        config.outputDir === path.join(__dirname, "..", "..", "output")
       ) {
         config.outputDir = path.resolve(arg);
       } else {
@@ -1767,14 +1768,22 @@ function showHelp() {
   console.log("");
   console.log("Examples:");
   console.log(
-    "  node generate-ink.js --template real-estate-sale-uk                  # Generate real estate template"
+    "  node generate-ink.js --template realestatesaleuk                    # Generate to output/realestatesaleuk/"
   );
   console.log(
-    "  node generate-ink.js -t real-estate-sale-uk archives                # Use custom archives directory"
+    "  node generate-ink.js -t realestatesaleuk archives                  # Use custom archives directory"
   );
   console.log(
-    "  node generate-ink.js -t late-delivery archives/ldp output/ldp       # Full custom paths"
+    "  node generate-ink.js -t latedeliveryandpenalty archives output     # Full custom paths"
   );
+  console.log("");
+  console.log("Output Structure:");
+  console.log(
+    "  Generated contracts are placed in template-specific subdirectories:"
+  );
+  console.log("  output/[template-name]/Cargo.toml");
+  console.log("  output/[template-name]/src/lib.rs");
+  console.log("  output/[template-name]/README.md");
   console.log("");
   console.log("Template Selection:");
   console.log(
