@@ -14,13 +14,11 @@
         "addressLine2": "Westminster",
         "city": "London",
         "postCode": "SW1H 0BD",
-        "county": "Greater London"
+        "county": "Greater London",
+        "country": "UK"
       },
-      "signature": {
-        "$class": "realestatesaleuk@1.0.0.Signature",
-        "walletAddress": "0x1234567890abcdef1234567890abcdef12345678",
-        "signedAt": "2024-01-15T14:30:00.000Z"
-      }
+      "walletAddress": "0x1234567890abcdef1234567890abcdef12345678",
+      "signedAt": "2024-01-15T14:30:00.000Z"
     }
   ],
   "buyers": [
@@ -36,13 +34,11 @@
         "addressLine2": "South Kensington",
         "city": "London",
         "postCode": "SW7 5HR",
-        "county": "Greater London"
+        "county": "Greater London",
+        "country": "UK"
       },
-      "signature": {
-        "$class": "realestatesaleuk@1.0.0.Signature",
-        "walletAddress": "0xabcdef1234567890abcdef1234567890abcdef12",
-        "signedAt": "2024-01-15T15:45:00.000Z"
-      }
+      "walletAddress": "0xabcdef1234567890abcdef1234567890abcdef12",
+      "signedAt": "2024-01-15T15:45:00.000Z"
     },
     {
       "$class": "realestatesaleuk@1.0.0.Party",
@@ -56,13 +52,11 @@
         "addressLine2": "South Kensington",
         "city": "London",
         "postCode": "SW7 5HR",
-        "county": "Greater London"
+        "county": "Greater London",
+        "country": "UK"
       },
-      "signature": {
-        "$class": "realestatesaleuk@1.0.0.Signature",
-        "walletAddress": "0xabcdef1234567890abcdef1234567890abcdef12",
-        "signedAt": "2024-01-15T15:45:00.000Z"
-      }
+      "walletAddress": "0xabcdef1234567890abcdef1234567890abcdef34",
+      "signedAt": "2024-01-15T15:45:00.000Z"
     }
   ],
   "propertyAddress": {
@@ -71,7 +65,8 @@
     "addressLine2": "Riverside Development",
     "city": "London",
     "postCode": "W6 9LQ",
-    "county": "Greater London"
+    "county": "Greater London",
+    "country": "UK"
   },
   "purchasePrice": {
     "$class": "realestatesaleuk@1.0.0.Money",

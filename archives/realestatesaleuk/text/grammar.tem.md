@@ -19,7 +19,7 @@
 
 - **{{fullName}}** \
   email: {{email}}, \
-  mobile: {{mobile}})
+  mobile: {{mobile}}
   {{/ulist}}
 
 **THE BUYERS:**  
@@ -27,7 +27,7 @@
 
 - **{{fullName}}** \
   email: {{email}}, \
-  mobile: {{mobile}})
+  mobile: {{mobile}}
   {{/ulist}}
 
 ---
@@ -87,17 +87,17 @@ Risk in the property shall pass to the Buyers on completion.
 **Sellers:**  
 {{#ulist sellers}}
 
-- **{{fullName}}**{{#with signature}} \
+- **{{fullName}}** \
    Signed: _{{signedAt as "DD MMM YYYY"}}_ \
-   Wallet: _{{walletAddress}}_ {{/with}}
+   Wallet: _{{walletAddress}}_
   {{/ulist}}
 
 **Buyers:**  
 {{#ulist buyers}}
 
-- **{{fullName}}**{{#with signature}} \
+- **{{fullName}}** \
    Signed: _{{signedAt as "DD MMM YYYY"}}_ \
-   Wallet: _{{walletAddress}}_ {{/with}}
+   Wallet: _{{walletAddress}}_
   {{/ulist}}
 
 ---
