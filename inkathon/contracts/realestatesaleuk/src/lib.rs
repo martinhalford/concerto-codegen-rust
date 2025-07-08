@@ -30,6 +30,7 @@ mod propertysale {
         pub purchase_price: Option<Money>,
         pub deposit: Option<Money>,
         pub balance: Option<Money>,
+        pub offer: Option<Vec<Offer>>,
         pub agreement_date: Option<u64>,
     }
 
@@ -155,6 +156,7 @@ mod propertysale {
     pub enum ContractStatus {
         #[default]
         Draft,
+        UnderOffer,
         Signing,
         Signed,
         Superseded,
@@ -200,6 +202,30 @@ mod propertysale {
         Accept,
         Reject,
         Cancel,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub enum OfferStatus {
+        #[default]
+        Pending,
+        Accepted,
+        Rejected,
+        Cancelled,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct Offer {
+        pub offer: Money,
+        pub offer_status: OfferStatus,
+        pub offer_date: u64,
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
@@ -250,6 +276,7 @@ mod propertysale {
         purchase_price: Option<Money>,
         deposit: Option<Money>,
         balance: Option<Money>,
+        offer: Option<Vec<Offer>>,
         agreement_date: Option<u64>,
         status: ContractStatus,
     }
@@ -363,6 +390,7 @@ mod propertysale {
             purchase_price: Option<Money>,
             deposit: Option<Money>,
             balance: Option<Money>,
+            offer: Option<Vec<Offer>>,
             agreement_date: Option<u64>,
             status: ContractStatus,
         ) -> Self {
@@ -382,6 +410,7 @@ mod propertysale {
                 purchase_price,
                 deposit,
                 balance,
+                offer,
                 agreement_date,
                 status,
             }
@@ -393,6 +422,7 @@ mod propertysale {
                 Vec::new(),
                 Vec::new(),
                 Default::default(),
+                None,
                 None,
                 None,
                 None,
@@ -528,6 +558,15 @@ mod propertysale {
                 changes_made = true;
             }
 
+            // Update offer if provided
+            if let Some(offer) = request.offer {
+                let old_value = format!("{:?}", self.offer);
+                let new_value = format!("{:?}", offer);
+                self.log_field_change("offer", &old_value, &new_value);
+                self.offer = Some(offer);
+                changes_made = true;
+            }
+
             // Update agreement date if provided
             if let Some(agreement_date) = request.agreement_date {
                 let old_value = if let Some(old_date) = self.agreement_date {
@@ -565,23 +604,38 @@ mod propertysale {
         #[ink(message)]
         pub fn change_status(
             &mut self,
-            _request: ChangeStatusRequest,
+            request: ChangeStatusRequest,
         ) -> Result<ChangeStatusResponse> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
 
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+
             let request_id = self.env().block_number() as u64;
 
             self.env().emit_event(ChangeStatusRequestSubmitted {
-                submitter: self.env().caller(),
+                submitter: caller,
                 request_id,
             });
 
             // === BEGIN CUSTOM LOGIC ===
-            // TODO: Implement your change status logic here
+            let old_status = self.status.clone();
+            let new_status = request.new_status;
+
+            // Log the status change
+            let old_value = format!("{:?}", old_status);
+            let new_value = format!("{:?}", new_status);
+            self.log_field_change("status", &old_value, &new_value);
+
+            // Update the status
+            self.status = new_status;
+
             let response = ChangeStatusResponse {
-                success: false,
+                success: true,
                 error_message: None,
             };
             // === END CUSTOM LOGIC ===
@@ -695,6 +749,11 @@ mod propertysale {
         #[ink(message)]
         pub fn get_balance(&self) -> Option<Money> {
             self.balance.clone()
+        }
+
+        #[ink(message)]
+        pub fn get_offer(&self) -> Option<Vec<Offer>> {
+            self.offer.clone()
         }
 
         #[ink(message)]
@@ -846,6 +905,24 @@ mod propertysale {
         }
 
         #[ink(message)]
+        pub fn set_offer(&mut self, new_value: Option<Vec<Offer>>) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+
+            let old_value = format!("{:?}", self.offer);
+            let new_value_str = format!("{:?}", new_value);
+            self.log_direct_field_change("offer", &old_value, &new_value_str);
+            self.offer = new_value;
+            Ok(())
+        }
+
+        #[ink(message)]
         pub fn set_agreement_date(&mut self, new_value: Option<u64>) -> Result<()> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
@@ -907,6 +984,20 @@ mod propertysale {
             #[allow(clippy::cast_possible_truncation)]
             {
                 self.buyers.len() as u32
+            }
+        }
+
+        // === OFFERS COLLECTION UTILITIES ===
+
+        #[ink(message)]
+        pub fn get_offers_count(&self) -> u32 {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                if let Some(ref offers) = self.offer {
+                    offers.len() as u32
+                } else {
+                    0
+                }
             }
         }
 

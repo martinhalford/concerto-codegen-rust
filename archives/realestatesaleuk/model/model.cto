@@ -5,6 +5,7 @@ import org.accordproject.runtime@0.2.0.{Request,Response} from https://models.ac
 
 enum ContractStatus {
   o Draft
+  o UnderOffer
   o Signing
   o Signed
   o Superseded
@@ -38,6 +39,19 @@ concept Money {
   o Double amount
   o CurrencyCode currencyCode
 } 
+
+enum OfferStatus {
+  o Pending
+  o Accepted
+  o Rejected
+  o Cancelled
+}
+
+concept Offer {
+  o Money offer
+  o OfferStatus offerStatus
+  o DateTime offerDate
+}
 
 concept Address {
   o String addressLine1
@@ -109,6 +123,7 @@ asset PropertySale extends Contract {
   o Money purchasePrice optional
   o Money deposit optional
   o Money balance optional
+  o Offer[] offer optional
   o DateTime agreementDate optional
   o ContractStatus status
 }
