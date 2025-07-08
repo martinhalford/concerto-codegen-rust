@@ -2,6 +2,7 @@
 
 #[ink::contract]
 mod propertysale {
+    use ink::prelude::format;
     use ink::prelude::string::{String, ToString};
     use ink::prelude::vec::Vec;
 
@@ -206,11 +207,34 @@ mod propertysale {
         feature = "std",
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
-    pub struct AuditLogEntry {
-        pub caller: AccountId,
-        pub timestamp: u64,
-        pub function_name: String,
-        pub request_id: u64,
+    pub struct FieldChange {
+        pub field_name: String,
+        pub old_value: String,
+        pub new_value: String,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    #[repr(u8)]
+    pub enum AuditLogEntry {
+        FunctionCall {
+            caller: AccountId,
+            timestamp: u64,
+            function_name: String,
+            request_id: u64,
+            field_changes: Vec<FieldChange>,
+        } = 0,
+        DirectFieldChange {
+            field_name: String,
+            changed_by: AccountId,
+            old_value: String,
+            new_value: String,
+            block_number: u64,
+            timestamp: u64,
+        } = 1,
     }
 
     #[ink(storage)]
@@ -219,6 +243,7 @@ mod propertysale {
         paused: bool,
         audit_log: ink::storage::Mapping<u64, AuditLogEntry>,
         audit_log_count: u64,
+        pending_field_changes: Vec<FieldChange>,
         sellers: Vec<Party>,
         buyers: Vec<Party>,
         property_address: PropertyAddress,
@@ -350,6 +375,7 @@ mod propertysale {
                 paused: false,
                 audit_log: ink::storage::Mapping::default(),
                 audit_log_count: 0,
+                pending_field_changes: Vec::new(),
                 sellers,
                 buyers,
                 property_address,
@@ -435,81 +461,82 @@ mod propertysale {
 
             // Update sellers if provided
             if let Some(sellers) = request.sellers {
-                self.log_field_change("sellers", "previous_sellers", "updated_sellers");
+                let old_value = format!("{:?}", self.sellers);
+                let new_value = format!("{:?}", sellers);
+                self.log_field_change("sellers", &old_value, &new_value);
                 self.sellers = sellers;
                 changes_made = true;
             }
 
             // Update buyers if provided
             if let Some(buyers) = request.buyers {
-                self.log_field_change("buyers", "previous_buyers", "updated_buyers");
+                let old_value = format!("{:?}", self.buyers);
+                let new_value = format!("{:?}", buyers);
+                self.log_field_change("buyers", &old_value, &new_value);
                 self.buyers = buyers;
                 changes_made = true;
             }
 
             // Update property address if provided
             if let Some(property_address) = request.property_address {
-                self.log_field_change("property_address", "previous_address", "updated_address");
+                let old_value = format!("{:?}", self.property_address);
+                let new_value = format!("{:?}", property_address);
+                self.log_field_change("property_address", &old_value, &new_value);
                 self.property_address = property_address;
                 changes_made = true;
             }
 
             // Update purchase price if provided
             if let Some(purchase_price) = request.purchase_price {
-                let old_value = if self.purchase_price.is_some() {
-                    "Some(value)"
+                let old_value = if let Some(ref old_price) = self.purchase_price {
+                    format!("{} {:?}", old_price.amount, old_price.currency_code)
                 } else {
-                    "None"
+                    "None".to_string()
                 };
-                let new_value_str = "Some(value)";
-                if old_value != new_value_str {
-                    self.log_field_change("purchase_price", old_value, new_value_str);
-                }
+                let new_value_str = format!(
+                    "{} {:?}",
+                    purchase_price.amount, purchase_price.currency_code
+                );
+                self.log_field_change("purchase_price", &old_value, &new_value_str);
                 self.purchase_price = Some(purchase_price);
                 changes_made = true;
             }
 
             // Update deposit if provided
             if let Some(deposit) = request.deposit {
-                let old_value = if self.deposit.is_some() {
-                    "Some(value)"
+                let old_value = if let Some(ref old_deposit) = self.deposit {
+                    format!("{} {:?}", old_deposit.amount, old_deposit.currency_code)
                 } else {
-                    "None"
+                    "None".to_string()
                 };
-                let new_value_str = "Some(value)";
-                if old_value != new_value_str {
-                    self.log_field_change("deposit", old_value, new_value_str);
-                }
+                let new_value_str = format!("{} {:?}", deposit.amount, deposit.currency_code);
+                self.log_field_change("deposit", &old_value, &new_value_str);
                 self.deposit = Some(deposit);
                 changes_made = true;
             }
 
             // Update balance if provided
             if let Some(balance) = request.balance {
-                let old_value = if self.balance.is_some() {
-                    "Some(value)"
+                let old_value = if let Some(ref old_balance) = self.balance {
+                    format!("{} {:?}", old_balance.amount, old_balance.currency_code)
                 } else {
-                    "None"
+                    "None".to_string()
                 };
-                let new_value_str = "Some(value)";
-                if old_value != new_value_str {
-                    self.log_field_change("balance", old_value, new_value_str);
-                }
+                let new_value_str = format!("{} {:?}", balance.amount, balance.currency_code);
+                self.log_field_change("balance", &old_value, &new_value_str);
                 self.balance = Some(balance);
                 changes_made = true;
             }
 
             // Update agreement date if provided
             if let Some(agreement_date) = request.agreement_date {
-                let old_value = if self.agreement_date.is_some() {
-                    "Some(value)"
+                let old_value = if let Some(old_date) = self.agreement_date {
+                    old_date.to_string()
                 } else {
-                    "None"
+                    "None".to_string()
                 };
-                let new_value_str = "Some(value)";
-                if old_value != new_value_str {
-                    self.log_field_change("agreement_date", old_value, new_value_str);
-                }
+                let new_value_str = agreement_date.to_string();
+                self.log_field_change("agreement_date", &old_value, &new_value_str);
                 self.agreement_date = Some(agreement_date);
                 changes_made = true;
             }
@@ -691,11 +718,9 @@ mod propertysale {
                 return Err(ContractError::Unauthorized);
             }
 
-            self.log_field_change(
-                "sellers",
-                "party_info_list_updated",
-                "party_info_list_modified",
-            );
+            let old_value = format!("{:?}", self.sellers);
+            let new_value_str = format!("{:?}", new_value);
+            self.log_direct_field_change("sellers", &old_value, &new_value_str);
             self.sellers = new_value;
             Ok(())
         }
@@ -711,11 +736,9 @@ mod propertysale {
                 return Err(ContractError::Unauthorized);
             }
 
-            self.log_field_change(
-                "buyers",
-                "party_info_list_updated",
-                "party_info_list_modified",
-            );
+            let old_value = format!("{:?}", self.buyers);
+            let new_value_str = format!("{:?}", new_value);
+            self.log_direct_field_change("buyers", &old_value, &new_value_str);
             self.buyers = new_value;
             Ok(())
         }
@@ -731,7 +754,9 @@ mod propertysale {
                 return Err(ContractError::Unauthorized);
             }
 
-            self.log_field_change("property_address", "address_updated", "address_modified");
+            let old_value = format!("{:?}", self.property_address);
+            let new_value_str = format!("{:?}", new_value);
+            self.log_direct_field_change("property_address", &old_value, &new_value_str);
             self.property_address = new_value;
             Ok(())
         }
@@ -747,18 +772,18 @@ mod propertysale {
                 return Err(ContractError::Unauthorized);
             }
 
-            let old_value = if self.purchase_price.is_some() {
-                "Some(value)"
+            let old_value = if let Some(ref old_price) = self.purchase_price {
+                format!("{} {:?}", old_price.amount, old_price.currency_code)
             } else {
-                "None"
+                "None".to_string()
             };
-            let new_value_str = if new_value.is_some() {
-                "Some(value)"
+            let new_value_str = if let Some(ref new_price) = new_value {
+                format!("{} {:?}", new_price.amount, new_price.currency_code)
             } else {
-                "None"
+                "None".to_string()
             };
             if old_value != new_value_str {
-                self.log_field_change("purchase_price", old_value, new_value_str);
+                self.log_direct_field_change("purchase_price", &old_value, &new_value_str);
             }
             self.purchase_price = new_value;
             Ok(())
@@ -775,18 +800,18 @@ mod propertysale {
                 return Err(ContractError::Unauthorized);
             }
 
-            let old_value = if self.deposit.is_some() {
-                "Some(value)"
+            let old_value = if let Some(ref old_deposit) = self.deposit {
+                format!("{} {:?}", old_deposit.amount, old_deposit.currency_code)
             } else {
-                "None"
+                "None".to_string()
             };
-            let new_value_str = if new_value.is_some() {
-                "Some(value)"
+            let new_value_str = if let Some(ref new_deposit) = new_value {
+                format!("{} {:?}", new_deposit.amount, new_deposit.currency_code)
             } else {
-                "None"
+                "None".to_string()
             };
             if old_value != new_value_str {
-                self.log_field_change("deposit", old_value, new_value_str);
+                self.log_direct_field_change("deposit", &old_value, &new_value_str);
             }
             self.deposit = new_value;
             Ok(())
@@ -803,18 +828,18 @@ mod propertysale {
                 return Err(ContractError::Unauthorized);
             }
 
-            let old_value = if self.balance.is_some() {
-                "Some(value)"
+            let old_value = if let Some(ref old_balance) = self.balance {
+                format!("{} {:?}", old_balance.amount, old_balance.currency_code)
             } else {
-                "None"
+                "None".to_string()
             };
-            let new_value_str = if new_value.is_some() {
-                "Some(value)"
+            let new_value_str = if let Some(ref new_balance) = new_value {
+                format!("{} {:?}", new_balance.amount, new_balance.currency_code)
             } else {
-                "None"
+                "None".to_string()
             };
             if old_value != new_value_str {
-                self.log_field_change("balance", old_value, new_value_str);
+                self.log_direct_field_change("balance", &old_value, &new_value_str);
             }
             self.balance = new_value;
             Ok(())
@@ -831,18 +856,18 @@ mod propertysale {
                 return Err(ContractError::Unauthorized);
             }
 
-            let old_value = if self.agreement_date.is_some() {
-                "Some(value)"
+            let old_value = if let Some(old_date) = self.agreement_date {
+                old_date.to_string()
             } else {
-                "None"
+                "None".to_string()
             };
-            let new_value_str = if new_value.is_some() {
-                "Some(value)"
+            let new_value_str = if let Some(new_date) = new_value {
+                new_date.to_string()
             } else {
-                "None"
+                "None".to_string()
             };
             if old_value != new_value_str {
-                self.log_field_change("agreement_date", old_value, new_value_str);
+                self.log_direct_field_change("agreement_date", &old_value, &new_value_str);
             }
             self.agreement_date = new_value;
             Ok(())
@@ -859,7 +884,9 @@ mod propertysale {
                 return Err(ContractError::Unauthorized);
             }
 
-            self.log_field_change("status", "status_updated", "status_modified");
+            let old_value = format!("{:?}", self.status);
+            let new_value_str = format!("{:?}", new_value);
+            self.log_direct_field_change("status", &old_value, &new_value_str);
             self.status = new_value;
             Ok(())
         }
@@ -885,16 +912,20 @@ mod propertysale {
 
         // === AUDIT LOG FUNCTIONALITY ===
 
-        /// Record a function call in the audit log
+        /// Record a function call in the audit log, including any pending field changes
         fn log_function_call(&mut self, function_name: &str, request_id: u64) {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
 
-            let log_entry = AuditLogEntry {
+            // Take all pending field changes and include them in this function call entry
+            let field_changes = core::mem::take(&mut self.pending_field_changes);
+
+            let log_entry = AuditLogEntry::FunctionCall {
                 caller,
                 timestamp,
                 function_name: function_name.to_string(),
                 request_id,
+                field_changes: field_changes.clone(),
             };
 
             // Store with current count as index, then increment
@@ -907,14 +938,50 @@ mod propertysale {
                 request_id,
                 timestamp,
             });
+
+            // Emit individual field change events for each change
+            for field_change in field_changes {
+                self.env().emit_event(ContractDataChanged {
+                    field_name: field_change.field_name,
+                    changed_by: caller,
+                    old_value: field_change.old_value,
+                    new_value: field_change.new_value,
+                    block_number: self.env().block_number() as u64,
+                    timestamp,
+                });
+            }
         }
 
-        /// Record a field change with before/after values
+        /// Record a field change - adds to pending changes for inclusion in next function call log
         fn log_field_change(&mut self, field_name: &str, old_value: &str, new_value: &str) {
+            let field_change = FieldChange {
+                field_name: field_name.to_string(),
+                old_value: old_value.to_string(),
+                new_value: new_value.to_string(),
+            };
+
+            self.pending_field_changes.push(field_change);
+        }
+
+        /// Record a direct field change immediately (for setter functions called directly)
+        fn log_direct_field_change(&mut self, field_name: &str, old_value: &str, new_value: &str) {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
             let block_number = self.env().block_number() as u64;
 
+            let log_entry = AuditLogEntry::DirectFieldChange {
+                field_name: field_name.to_string(),
+                changed_by: caller,
+                old_value: old_value.to_string(),
+                new_value: new_value.to_string(),
+                block_number,
+                timestamp,
+            };
+
+            self.audit_log.insert(self.audit_log_count, &log_entry);
+            self.audit_log_count = self.audit_log_count.saturating_add(1);
+
+            // Emit event
             self.env().emit_event(ContractDataChanged {
                 field_name: field_name.to_string(),
                 changed_by: caller,
@@ -942,6 +1009,91 @@ mod propertysale {
             }
 
             entries
+        }
+
+        #[ink(message)]
+        pub fn get_audit_log_function_calls(&self, start: u64, limit: u64) -> Vec<AuditLogEntry> {
+            let mut entries = Vec::new();
+            let mut count = 0u64;
+
+            for i in start..self.audit_log_count {
+                if count >= limit {
+                    break;
+                }
+                if let Some(entry) = self.audit_log.get(i) {
+                    if matches!(entry, AuditLogEntry::FunctionCall { .. }) {
+                        entries.push(entry);
+                        count = count.saturating_add(1);
+                    }
+                }
+            }
+
+            entries
+        }
+
+        #[ink(message)]
+        pub fn get_audit_log_field_changes(&self, start: u64, limit: u64) -> Vec<AuditLogEntry> {
+            let mut entries = Vec::new();
+            let mut count = 0u64;
+
+            for i in start..self.audit_log_count {
+                if count >= limit {
+                    break;
+                }
+                if let Some(entry) = self.audit_log.get(i) {
+                    match entry {
+                        AuditLogEntry::DirectFieldChange { .. } => {
+                            entries.push(entry);
+                            count = count.saturating_add(1);
+                        }
+                        AuditLogEntry::FunctionCall {
+                            ref field_changes, ..
+                        } => {
+                            if !field_changes.is_empty() {
+                                entries.push(entry);
+                                count = count.saturating_add(1);
+                            }
+                        }
+                    }
+                }
+            }
+
+            entries
+        }
+
+        #[ink(message)]
+        pub fn get_audit_log_field_changes_by_field(
+            &self,
+            field_name: String,
+        ) -> Vec<AuditLogEntry> {
+            let mut matching_entries = Vec::new();
+
+            for i in 0..self.audit_log_count {
+                if let Some(entry) = self.audit_log.get(i) {
+                    match entry {
+                        AuditLogEntry::DirectFieldChange {
+                            field_name: ref entry_field_name,
+                            ..
+                        } => {
+                            if entry_field_name == &field_name {
+                                matching_entries.push(entry);
+                            }
+                        }
+                        AuditLogEntry::FunctionCall {
+                            ref field_changes, ..
+                        } => {
+                            for field_change in field_changes {
+                                if field_change.field_name == field_name {
+                                    matching_entries.push(entry.clone());
+                                    break; // Only add the entry once even if multiple matching fields
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            matching_entries
         }
     }
 
