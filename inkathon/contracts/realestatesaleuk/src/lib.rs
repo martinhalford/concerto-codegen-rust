@@ -23,31 +23,6 @@ mod propertysale {
         feature = "std",
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
-    pub struct AmendContractRequest {
-        pub sellers: Option<Vec<Party>>,
-        pub buyers: Option<Vec<Party>>,
-        pub property_address: Option<PropertyAddress>,
-        pub purchase_price: Option<Money>,
-        pub deposit: Option<Money>,
-        pub balance: Option<Money>,
-        pub offer: Option<Vec<Offer>>,
-        pub agreement_date: Option<u64>,
-    }
-
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub struct ChangeStatusRequest {
-        pub new_status: ContractStatus,
-    }
-
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
     pub struct ManageOfferRequest {
         pub action: OfferAction,
         pub offer: Option<Money>,
@@ -59,26 +34,6 @@ mod propertysale {
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
     pub struct SignContractRequest {}
-
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub struct AmendContractResponse {
-        pub success: bool,
-        pub error_message: Option<String>,
-    }
-
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub struct ChangeStatusResponse {
-        pub success: bool,
-        pub error_message: Option<String>,
-    }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
     #[cfg_attr(
@@ -117,6 +72,17 @@ mod propertysale {
     pub struct Money {
         pub amount: u128,
         pub currency_code: CurrencyCode,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct Offer {
+        pub offer: Money,
+        pub offer_status: OfferStatus,
+        pub offer_date: u64,
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
@@ -217,17 +183,6 @@ mod propertysale {
         Cancelled,
     }
 
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub struct Offer {
-        pub offer: Money,
-        pub offer_status: OfferStatus,
-        pub offer_date: u64,
-    }
-
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
     #[cfg_attr(
         feature = "std",
@@ -300,22 +255,6 @@ mod propertysale {
     }
 
     #[ink(event)]
-    pub struct AmendContractRequestSubmitted {
-        #[ink(topic)]
-        pub submitter: AccountId,
-        #[ink(topic)]
-        pub request_id: u64,
-    }
-
-    #[ink(event)]
-    pub struct ChangeStatusRequestSubmitted {
-        #[ink(topic)]
-        pub submitter: AccountId,
-        #[ink(topic)]
-        pub request_id: u64,
-    }
-
-    #[ink(event)]
     pub struct ManageOfferRequestSubmitted {
         #[ink(topic)]
         pub submitter: AccountId,
@@ -329,20 +268,6 @@ mod propertysale {
         pub submitter: AccountId,
         #[ink(topic)]
         pub request_id: u64,
-    }
-
-    #[ink(event)]
-    pub struct AmendContractResponseGenerated {
-        #[ink(topic)]
-        pub request_id: u64,
-        pub success: bool,
-    }
-
-    #[ink(event)]
-    pub struct ChangeStatusResponseGenerated {
-        #[ink(topic)]
-        pub request_id: u64,
-        pub success: bool,
     }
 
     #[ink(event)]
@@ -463,192 +388,6 @@ mod propertysale {
             self.paused = false;
             self.env().emit_event(ContractUnpaused { by: caller });
             Ok(())
-        }
-
-        #[ink(message)]
-        pub fn amend_contract(
-            &mut self,
-            request: AmendContractRequest,
-        ) -> Result<AmendContractResponse> {
-            if self.paused {
-                return Err(ContractError::ContractPaused);
-            }
-
-            let caller = self.env().caller();
-            if caller != self.owner {
-                return Err(ContractError::Unauthorized);
-            }
-
-            let request_id = self.env().block_number() as u64;
-
-            self.env().emit_event(AmendContractRequestSubmitted {
-                submitter: caller,
-                request_id,
-            });
-
-            // === BEGIN CUSTOM LOGIC ===
-            let mut changes_made = false;
-
-            // Update sellers if provided
-            if let Some(sellers) = request.sellers {
-                let old_value = format!("{:?}", self.sellers);
-                let new_value = format!("{:?}", sellers);
-                self.log_field_change("sellers", &old_value, &new_value);
-                self.sellers = sellers;
-                changes_made = true;
-            }
-
-            // Update buyers if provided
-            if let Some(buyers) = request.buyers {
-                let old_value = format!("{:?}", self.buyers);
-                let new_value = format!("{:?}", buyers);
-                self.log_field_change("buyers", &old_value, &new_value);
-                self.buyers = buyers;
-                changes_made = true;
-            }
-
-            // Update property address if provided
-            if let Some(property_address) = request.property_address {
-                let old_value = format!("{:?}", self.property_address);
-                let new_value = format!("{:?}", property_address);
-                self.log_field_change("property_address", &old_value, &new_value);
-                self.property_address = property_address;
-                changes_made = true;
-            }
-
-            // Update purchase price if provided
-            if let Some(purchase_price) = request.purchase_price {
-                let old_value = if let Some(ref old_price) = self.purchase_price {
-                    format!("{} {:?}", old_price.amount, old_price.currency_code)
-                } else {
-                    "None".to_string()
-                };
-                let new_value_str = format!(
-                    "{} {:?}",
-                    purchase_price.amount, purchase_price.currency_code
-                );
-                self.log_field_change("purchase_price", &old_value, &new_value_str);
-                self.purchase_price = Some(purchase_price);
-                changes_made = true;
-            }
-
-            // Update deposit if provided
-            if let Some(deposit) = request.deposit {
-                let old_value = if let Some(ref old_deposit) = self.deposit {
-                    format!("{} {:?}", old_deposit.amount, old_deposit.currency_code)
-                } else {
-                    "None".to_string()
-                };
-                let new_value_str = format!("{} {:?}", deposit.amount, deposit.currency_code);
-                self.log_field_change("deposit", &old_value, &new_value_str);
-                self.deposit = Some(deposit);
-                changes_made = true;
-            }
-
-            // Update balance if provided
-            if let Some(balance) = request.balance {
-                let old_value = if let Some(ref old_balance) = self.balance {
-                    format!("{} {:?}", old_balance.amount, old_balance.currency_code)
-                } else {
-                    "None".to_string()
-                };
-                let new_value_str = format!("{} {:?}", balance.amount, balance.currency_code);
-                self.log_field_change("balance", &old_value, &new_value_str);
-                self.balance = Some(balance);
-                changes_made = true;
-            }
-
-            // Update offer if provided
-            if let Some(offer) = request.offer {
-                let old_value = format!("{:?}", self.offer);
-                let new_value = format!("{:?}", offer);
-                self.log_field_change("offer", &old_value, &new_value);
-                self.offer = Some(offer);
-                changes_made = true;
-            }
-
-            // Update agreement date if provided
-            if let Some(agreement_date) = request.agreement_date {
-                let old_value = if let Some(old_date) = self.agreement_date {
-                    old_date.to_string()
-                } else {
-                    "None".to_string()
-                };
-                let new_value_str = agreement_date.to_string();
-                self.log_field_change("agreement_date", &old_value, &new_value_str);
-                self.agreement_date = Some(agreement_date);
-                changes_made = true;
-            }
-
-            let response = AmendContractResponse {
-                success: changes_made,
-                error_message: if changes_made {
-                    None
-                } else {
-                    Some("No changes provided in amendment request".to_string())
-                },
-            };
-            // === END CUSTOM LOGIC ===
-
-            // Log function call for audit trail
-            self.log_function_call("amend_contract", request_id);
-
-            self.env().emit_event(AmendContractResponseGenerated {
-                request_id,
-                success: changes_made,
-            });
-
-            Ok(response)
-        }
-
-        #[ink(message)]
-        pub fn change_status(
-            &mut self,
-            request: ChangeStatusRequest,
-        ) -> Result<ChangeStatusResponse> {
-            if self.paused {
-                return Err(ContractError::ContractPaused);
-            }
-
-            let caller = self.env().caller();
-            if caller != self.owner {
-                return Err(ContractError::Unauthorized);
-            }
-
-            let request_id = self.env().block_number() as u64;
-
-            self.env().emit_event(ChangeStatusRequestSubmitted {
-                submitter: caller,
-                request_id,
-            });
-
-            // === BEGIN CUSTOM LOGIC ===
-            let old_status = self.status.clone();
-            let new_status = request.new_status;
-
-            // Log the status change
-            let old_value = format!("{:?}", old_status);
-            let new_value = format!("{:?}", new_status);
-            self.log_field_change("status", &old_value, &new_value);
-
-            // Update the status
-            self.status = new_status;
-
-            let response = ChangeStatusResponse {
-                success: true,
-                error_message: None,
-            };
-            // === END CUSTOM LOGIC ===
-
-            // Log function call for audit trail
-            self.log_function_call("change_status", request_id);
-
-            self.env().emit_event(ChangeStatusResponseGenerated {
-                request_id,
-                success: true,
-            });
-
-            Ok(response)
         }
 
         #[ink(message)]
@@ -841,9 +580,7 @@ mod propertysale {
             } else {
                 "None".to_string()
             };
-            if old_value != new_value_str {
-                self.log_direct_field_change("purchase_price", &old_value, &new_value_str);
-            }
+            self.log_direct_field_change("purchase_price", &old_value, &new_value_str);
             self.purchase_price = new_value;
             Ok(())
         }
@@ -869,9 +606,7 @@ mod propertysale {
             } else {
                 "None".to_string()
             };
-            if old_value != new_value_str {
-                self.log_direct_field_change("deposit", &old_value, &new_value_str);
-            }
+            self.log_direct_field_change("deposit", &old_value, &new_value_str);
             self.deposit = new_value;
             Ok(())
         }
@@ -897,9 +632,7 @@ mod propertysale {
             } else {
                 "None".to_string()
             };
-            if old_value != new_value_str {
-                self.log_direct_field_change("balance", &old_value, &new_value_str);
-            }
+            self.log_direct_field_change("balance", &old_value, &new_value_str);
             self.balance = new_value;
             Ok(())
         }
@@ -943,9 +676,7 @@ mod propertysale {
             } else {
                 "None".to_string()
             };
-            if old_value != new_value_str {
-                self.log_direct_field_change("agreement_date", &old_value, &new_value_str);
-            }
+            self.log_direct_field_change("agreement_date", &old_value, &new_value_str);
             self.agreement_date = new_value;
             Ok(())
         }

@@ -12,6 +12,7 @@ This contract implements the **PropertySale** template model with the following 
 - **purchasePrice**: Money
 - **deposit**: Money
 - **balance**: Money
+- **offer**: Offer
 - **agreementDate**: DateTime
 - **status**: ContractStatus
 
@@ -21,8 +22,8 @@ This contract implements the **PropertySale** template model with the following 
 - **Pausable**: Contract can be paused/unpaused by the owner
 - **Access Control**: Owner-based permissions
 - **Event Emission**: All important actions emit events
-- **Request Processing**: Handles AmendContractRequest requests
-- **Response Generation**: Generates AmendContractResponse responses
+- **Request Processing**: Handles ManageOfferRequest requests
+- **Response Generation**: Generates ManageOfferResponse responses
 
 ## Building and Testing
 
@@ -63,13 +64,14 @@ cargo test
 - `is_paused()`: Returns whether the contract is paused
 - `pause()`: Pause the contract (owner only)
 - `unpause()`: Unpause the contract (owner only)
-- `process_request(request: AmendContractRequest)`: Process a contract request
+- `process_request(request: ManageOfferRequest)`: Process a contract request
 - `get_sellers()`: Get sellers
 - `get_buyers()`: Get buyers
 - `get_property_address()`: Get propertyAddress
 - `get_purchase_price()`: Get purchasePrice
 - `get_deposit()`: Get deposit
 - `get_balance()`: Get balance
+- `get_offer()`: Get offer
 - `get_agreement_date()`: Get agreementDate
 - `get_status()`: Get status
 
@@ -78,8 +80,8 @@ cargo test
 - `ContractCreated`: Emitted when contract is created
 - `ContractPaused`: Emitted when contract is paused
 - `ContractUnpaused`: Emitted when contract is unpaused
-- `AmendContractRequestSubmitted`: Emitted when a request is submitted
-- `AmendContractResponseGenerated`: Emitted when a response is generated
+- `ManageOfferRequestSubmitted`: Emitted when a request is submitted
+- `ManageOfferResponseGenerated`: Emitted when a response is generated
 
 ## Generated from Concerto Models
 

@@ -72,31 +72,6 @@ concept Party {
   o DateTime signedAt optional
 }
 
-
-transaction AmendContractRequest extends Request {
-  o Party[] sellers optional
-  o Party[] buyers optional
-  o Address propertyAddress optional
-  o Money purchasePrice optional
-  o Money deposit optional
-  o Money balance optional
-  o DateTime agreementDate optional
-}
-
-transaction AmendContractResponse extends Response {
-  o Boolean success
-  o String errorMessage optional
-}
-
-transaction ChangeStatusRequest extends Request {
-  o ContractStatus newStatus
-}
-
-transaction ChangeStatusResponse extends Response {
-  o Boolean success
-  o String errorMessage optional
-}
-
 transaction ManageOfferRequest extends Request {
   o OfferAction action
   o Money offer optional
