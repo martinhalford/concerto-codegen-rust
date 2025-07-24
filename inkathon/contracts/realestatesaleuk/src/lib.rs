@@ -231,7 +231,7 @@ mod propertysale {
         purchase_price: Option<Money>,
         deposit: Option<Money>,
         balance: Option<Money>,
-        offer: Option<Vec<Offer>>,
+        offer: Option<Offer>,
         agreement_date: Option<u64>,
         status: ContractStatus,
     }
@@ -315,7 +315,7 @@ mod propertysale {
             purchase_price: Option<Money>,
             deposit: Option<Money>,
             balance: Option<Money>,
-            offer: Option<Vec<Offer>>,
+            offer: Option<Offer>,
             agreement_date: Option<u64>,
             status: ContractStatus,
         ) -> Self {
@@ -491,7 +491,7 @@ mod propertysale {
         }
 
         #[ink(message)]
-        pub fn get_offer(&self) -> Option<Vec<Offer>> {
+        pub fn get_offer(&self) -> Option<Offer> {
             self.offer.clone()
         }
 
@@ -708,7 +708,7 @@ mod propertysale {
         }
 
         #[ink(message)]
-        pub fn set_offer(&mut self, new_value: Option<Vec<Offer>>) -> Result<()> {
+        pub fn set_offer(&mut self, new_value: Option<Offer>) -> Result<()> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
@@ -785,20 +785,6 @@ mod propertysale {
             #[allow(clippy::cast_possible_truncation)]
             {
                 self.buyers.len() as u32
-            }
-        }
-
-        // === OFFERS COLLECTION UTILITIES ===
-
-        #[ink(message)]
-        pub fn get_offers_count(&self) -> u32 {
-            #[allow(clippy::cast_possible_truncation)]
-            {
-                if let Some(ref offers) = self.offer {
-                    offers.len() as u32
-                } else {
-                    0
-                }
             }
         }
 
