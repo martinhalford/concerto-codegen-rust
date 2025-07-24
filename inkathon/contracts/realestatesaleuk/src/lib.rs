@@ -505,8 +505,34 @@ mod propertysale {
             self.status.clone()
         }
 
+        // === SELLERS COLLECTION MANAGEMENT ===
+
         #[ink(message)]
-        pub fn set_sellers(&mut self, new_value: Vec<Party>) -> Result<()> {
+        pub fn add_seller(&mut self, party: Party) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+
+            // Check for duplicate party_id
+            if self.sellers.iter().any(|p| p.party_id == party.party_id) {
+                return Err(ContractError::InvalidInput);
+            }
+
+            let old_value = format!("{:?}", self.sellers);
+            self.sellers.push(party.clone());
+            let new_value = format!("{:?}", self.sellers);
+
+            self.log_direct_field_change("sellers", &old_value, &new_value);
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn remove_seller(&mut self, party_id: String) -> Result<()> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
@@ -517,14 +543,49 @@ mod propertysale {
             }
 
             let old_value = format!("{:?}", self.sellers);
-            let new_value_str = format!("{:?}", new_value);
-            self.log_direct_field_change("sellers", &old_value, &new_value_str);
-            self.sellers = new_value;
+
+            // Find and remove the party
+            let initial_len = self.sellers.len();
+            self.sellers.retain(|p| p.party_id != party_id);
+
+            // Check if party was actually removed
+            if self.sellers.len() == initial_len {
+                return Err(ContractError::InvalidInput);
+            }
+
+            let new_value = format!("{:?}", self.sellers);
+            self.log_direct_field_change("sellers", &old_value, &new_value);
+            Ok(())
+        }
+
+        // === BUYERS COLLECTION MANAGEMENT ===
+
+        #[ink(message)]
+        pub fn add_buyer(&mut self, party: Party) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+
+            // Check for duplicate party_id
+            if self.buyers.iter().any(|p| p.party_id == party.party_id) {
+                return Err(ContractError::InvalidInput);
+            }
+
+            let old_value = format!("{:?}", self.buyers);
+            self.buyers.push(party.clone());
+            let new_value = format!("{:?}", self.buyers);
+
+            self.log_direct_field_change("buyers", &old_value, &new_value);
             Ok(())
         }
 
         #[ink(message)]
-        pub fn set_buyers(&mut self, new_value: Vec<Party>) -> Result<()> {
+        pub fn remove_buyer(&mut self, party_id: String) -> Result<()> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
@@ -535,9 +596,18 @@ mod propertysale {
             }
 
             let old_value = format!("{:?}", self.buyers);
-            let new_value_str = format!("{:?}", new_value);
-            self.log_direct_field_change("buyers", &old_value, &new_value_str);
-            self.buyers = new_value;
+
+            // Find and remove the party
+            let initial_len = self.buyers.len();
+            self.buyers.retain(|p| p.party_id != party_id);
+
+            // Check if party was actually removed
+            if self.buyers.len() == initial_len {
+                return Err(ContractError::InvalidInput);
+            }
+
+            let new_value = format!("{:?}", self.buyers);
+            self.log_direct_field_change("buyers", &old_value, &new_value);
             Ok(())
         }
 
