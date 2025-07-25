@@ -98,7 +98,7 @@ asset PropertySale extends Contract {
   o Money purchasePrice optional
   o Money deposit optional
   o Money balance optional
-  o Offer[] offer optional
+  o Offer offer optional
   o DateTime agreementDate optional
   o ContractStatus status
 }
