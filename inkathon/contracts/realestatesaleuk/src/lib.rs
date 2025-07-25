@@ -407,10 +407,70 @@ mod propertysale {
             });
 
             // === BEGIN CUSTOM LOGIC ===
-            // TODO: Implement your manage offer logic here
-            let response = ManageOfferResponse {
-                success: false,
-                error_message: None,
+            let response = match _request.action {
+                OfferAction::Submit => {
+                    // For Submit action, we need a new offer amount
+                    match _request.offer {
+                        Some(offer_money) => {
+                            // Create new offer with Pending status and current timestamp
+                            let new_offer = Offer {
+                                offer: offer_money,
+                                offer_status: OfferStatus::Pending,
+                                offer_date: self.env().block_timestamp(),
+                            };
+
+                            // Log the change
+                            let old_value = format!("{:?}", self.offer);
+                            let new_value_str = format!("{:?}", Some(&new_offer));
+                            self.log_field_change("offer", &old_value, &new_value_str);
+
+                            // Set the new offer
+                            self.offer = Some(new_offer);
+
+                            ManageOfferResponse {
+                                success: true,
+                                error_message: None,
+                            }
+                        }
+                        None => ManageOfferResponse {
+                            success: false,
+                            error_message: Some(
+                                "Offer amount is required for Submit action".to_string(),
+                            ),
+                        },
+                    }
+                }
+                OfferAction::Accept | OfferAction::Reject | OfferAction::Cancel => {
+                    // For other actions, just update the status of existing offer
+                    match &self.offer {
+                        Some(_) => {
+                            // Capture old value before mutable borrow
+                            let old_value = format!("{:?}", self.offer);
+
+                            // Now get mutable reference and update status
+                            if let Some(ref mut existing_offer) = self.offer {
+                                existing_offer.offer_status = match _request.action {
+                                    OfferAction::Accept => OfferStatus::Accepted,
+                                    OfferAction::Reject => OfferStatus::Rejected,
+                                    OfferAction::Cancel => OfferStatus::Cancelled,
+                                    OfferAction::Submit => OfferStatus::Pending, // This won't happen due to match above
+                                };
+                            }
+
+                            let new_value_str = format!("{:?}", self.offer);
+                            self.log_field_change("offer", &old_value, &new_value_str);
+
+                            ManageOfferResponse {
+                                success: true,
+                                error_message: None,
+                            }
+                        }
+                        None => ManageOfferResponse {
+                            success: false,
+                            error_message: Some("No existing offer to update".to_string()),
+                        },
+                    }
+                }
             };
             // === END CUSTOM LOGIC ===
 
