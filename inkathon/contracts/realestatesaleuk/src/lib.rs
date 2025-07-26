@@ -317,6 +317,19 @@ mod propertysale {
     }
 
     impl PropertySale {
+        /// Helper function to validate that a Party has required fields
+        fn is_valid_party(party: &Party) -> bool {
+            !party.party_id.is_empty() && !party.full_name.is_empty() && !party.email.is_empty()
+        }
+
+        /// Filter out invalid/blank parties
+        fn filter_valid_parties(parties: Vec<Party>) -> Vec<Party> {
+            parties
+                .into_iter()
+                .filter(|party| Self::is_valid_party(party))
+                .collect()
+        }
+
         #[ink(constructor)]
         pub fn new(
             sellers: Vec<Party>,
@@ -331,6 +344,10 @@ mod propertysale {
         ) -> Self {
             let caller = Self::env().caller();
 
+            // Filter out blank/invalid parties
+            let valid_sellers = Self::filter_valid_parties(sellers);
+            let valid_buyers = Self::filter_valid_parties(buyers);
+
             Self::env().emit_event(ContractCreated { owner: caller });
 
             Self {
@@ -339,8 +356,8 @@ mod propertysale {
                 audit_log: ink::storage::Mapping::default(),
                 audit_log_count: 0,
                 pending_field_changes: Vec::new(),
-                sellers,
-                buyers,
+                sellers: valid_sellers,
+                buyers: valid_buyers,
                 property_address,
                 purchase_price,
                 deposit,
@@ -664,6 +681,11 @@ mod propertysale {
                 return Err(ContractError::Unauthorized);
             }
 
+            // Validate party has required fields
+            if !Self::is_valid_party(&party) {
+                return Err(ContractError::InvalidInput);
+            }
+
             // Check for duplicate party_id
             if self.sellers.iter().any(|p| p.party_id == party.party_id) {
                 return Err(ContractError::InvalidInput);
@@ -715,6 +737,11 @@ mod propertysale {
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
+            }
+
+            // Validate party has required fields
+            if !Self::is_valid_party(&party) {
+                return Err(ContractError::InvalidInput);
             }
 
             // Check for duplicate party_id
