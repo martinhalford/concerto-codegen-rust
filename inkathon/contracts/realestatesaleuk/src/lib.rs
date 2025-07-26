@@ -5,6 +5,7 @@ mod propertysale {
     use ink::prelude::format;
     use ink::prelude::string::{String, ToString};
     use ink::prelude::vec::Vec;
+    // Note: AccountId32 and Ss58Codec are not needed for no_std builds
 
     // Error types
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -99,7 +100,7 @@ mod propertysale {
         pub country: Country,
     }
 
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
     #[cfg_attr(
         feature = "std",
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
@@ -110,7 +111,7 @@ mod propertysale {
         pub email: String,
         pub mobile: String,
         pub address: PropertyAddress,
-        pub wallet_address: String,
+        pub wallet_address: AccountId,
         pub signed_at: Option<u64>,
     }
 
@@ -285,6 +286,15 @@ mod propertysale {
     }
 
     #[ink(event)]
+    pub struct AuthorizationAttempt {
+        #[ink(topic)]
+        pub caller: AccountId,
+        #[ink(topic)]
+        pub stored_address: AccountId,
+        pub match_result: bool,
+    }
+
+    #[ink(event)]
     pub struct FunctionCalled {
         #[ink(topic)]
         pub caller: AccountId,
@@ -390,6 +400,40 @@ mod propertysale {
             Ok(())
         }
 
+        // Compare caller's AccountId with stored address
+        fn is_caller_matching_account(&self, caller: AccountId, stored_address: AccountId) -> bool {
+            let match_result = caller == stored_address;
+
+            // Emit debug event for authorization attempts
+            self.env().emit_event(AuthorizationAttempt {
+                caller,
+                stored_address,
+                match_result,
+            });
+
+            match_result
+        }
+
+        // Helper function to check if caller is a buyer
+        fn is_caller_buyer(&self, caller: AccountId) -> bool {
+            for buyer in &self.buyers {
+                if self.is_caller_matching_account(caller, buyer.wallet_address) {
+                    return true;
+                }
+            }
+            false
+        }
+
+        // Helper function to check if caller is a seller
+        fn is_caller_seller(&self, caller: AccountId) -> bool {
+            for seller in &self.sellers {
+                if self.is_caller_matching_account(caller, seller.wallet_address) {
+                    return true;
+                }
+            }
+            false
+        }
+
         #[ink(message)]
         pub fn manage_offer(
             &mut self,
@@ -399,12 +443,37 @@ mod propertysale {
                 return Err(ContractError::ContractPaused);
             }
 
+            let caller = self.env().caller();
             let request_id = self.env().block_number() as u64;
 
             self.env().emit_event(ManageOfferRequestSubmitted {
-                submitter: self.env().caller(),
+                submitter: caller,
                 request_id,
             });
+
+            // Access control: Check if caller is authorized for the specific action
+            match _request.action {
+                OfferAction::Submit | OfferAction::Cancel => {
+                    if !self.is_caller_buyer(caller) {
+                        return Ok(ManageOfferResponse {
+                            success: false,
+                            error_message: Some(
+                                "Only buyers can submit or cancel offers".to_string(),
+                            ),
+                        });
+                    }
+                }
+                OfferAction::Accept | OfferAction::Reject => {
+                    if !self.is_caller_seller(caller) {
+                        return Ok(ManageOfferResponse {
+                            success: false,
+                            error_message: Some(
+                                "Only sellers can accept or reject offers".to_string(),
+                            ),
+                        });
+                    }
+                }
+            }
 
             // === BEGIN CUSTOM LOGIC ===
             let response = match _request.action {
@@ -563,6 +632,23 @@ mod propertysale {
         #[ink(message)]
         pub fn get_status(&self) -> ContractStatus {
             self.status.clone()
+        }
+
+        /// Utility function to validate if a string is a valid SS58 address
+        #[ink(message)]
+        pub fn is_valid_ss58_address(&self, address: String) -> bool {
+            // Basic validation: SS58 addresses should be between 47-48 characters
+            // and contain only valid base58 characters
+            if address.len() < 47 || address.len() > 48 {
+                return false;
+            }
+
+            // Check if all characters are valid base58 characters
+            address.chars().all(|c| {
+                matches!(c,
+                    '1'..='9' | 'A'..='H' | 'J'..='N' | 'P'..='Z' | 'a'..='k' | 'm'..='z'
+                )
+            })
         }
 
         // === SELLERS COLLECTION MANAGEMENT ===
