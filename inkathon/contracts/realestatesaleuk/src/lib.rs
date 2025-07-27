@@ -322,6 +322,164 @@ mod propertysale {
             !party.party_id.is_empty() && !party.full_name.is_empty() && !party.email.is_empty()
         }
 
+        /// Helper function to validate that a PropertyAddress has required fields
+        fn is_valid_property_address(address: &PropertyAddress) -> bool {
+            !address.address_line1.is_empty()
+                && !address.city.is_empty()
+                && !address.post_code.is_empty()
+                && !address.county.is_empty()
+        }
+
+        /// Helper function to create a valid default PropertyAddress
+        fn default_property_address() -> PropertyAddress {
+            PropertyAddress {
+                address_line1: "TBD".to_string(),
+                address_line2: "TBD".to_string(),
+                city: "TBD".to_string(),
+                post_code: "TBD".to_string(),
+                county: "TBD".to_string(),
+                country: Country::UK,
+            }
+        }
+
+        /// Helper function to validate contract is ready for signing
+        fn validate_contract_ready_for_signing(&self) -> core::result::Result<(), String> {
+            // Check at least 1 seller
+            if self.sellers.is_empty() {
+                return Err("Contract must have at least one seller before signing".to_string());
+            }
+
+            // Check at least 1 buyer
+            if self.buyers.is_empty() {
+                return Err("Contract must have at least one buyer before signing".to_string());
+            }
+
+            // Check offer exists and is accepted
+            match &self.offer {
+                Some(offer) => {
+                    if offer.offer_status != OfferStatus::Accepted {
+                        return Err(format!(
+                            "Offer must be accepted before signing. Current status: {:?}",
+                            offer.offer_status
+                        ));
+                    }
+
+                    // Check purchase price exists and matches offer amount
+                    match &self.purchase_price {
+                        Some(purchase_price) => {
+                            if purchase_price.amount != offer.offer.amount {
+                                return Err(format!(
+                                    "Purchase price ({} {:?}) must equal offer amount ({} {:?})",
+                                    purchase_price.amount,
+                                    purchase_price.currency_code,
+                                    offer.offer.amount,
+                                    offer.offer.currency_code
+                                ));
+                            }
+                            if purchase_price.currency_code != offer.offer.currency_code {
+                                return Err(format!(
+                                    "Purchase price currency ({:?}) must match offer currency ({:?})",
+                                    purchase_price.currency_code, offer.offer.currency_code
+                                ));
+                            }
+                        }
+                        None => {
+                            return Err("Purchase price must be set before signing".to_string());
+                        }
+                    }
+                }
+                None => {
+                    return Err(
+                        "No offer exists to sign - an accepted offer is required".to_string()
+                    );
+                }
+            }
+
+            Ok(())
+        }
+
+        /// Helper function to find and update the signing party
+        fn find_and_sign_party(&mut self, caller: AccountId) -> Result<()> {
+            let current_timestamp = self.env().block_timestamp();
+
+            // First, find the seller index (if any)
+            let mut seller_index: Option<usize> = None;
+            for (index, seller) in self.sellers.iter().enumerate() {
+                if self.is_caller_matching_account(caller, seller.wallet_address) {
+                    if seller.signed_at.is_some() {
+                        return Err(ContractError::InvalidInput);
+                    }
+                    seller_index = Some(index);
+                    break;
+                }
+            }
+
+            // If found as seller, update and return
+            if let Some(index) = seller_index {
+                self.sellers[index].signed_at = Some(current_timestamp);
+                return Ok(());
+            }
+
+            // If not found as seller, check buyers
+            let mut buyer_index: Option<usize> = None;
+            for (index, buyer) in self.buyers.iter().enumerate() {
+                if self.is_caller_matching_account(caller, buyer.wallet_address) {
+                    if buyer.signed_at.is_some() {
+                        return Err(ContractError::InvalidInput);
+                    }
+                    buyer_index = Some(index);
+                    break;
+                }
+            }
+
+            // If found as buyer, update and return
+            if let Some(index) = buyer_index {
+                self.buyers[index].signed_at = Some(current_timestamp);
+                return Ok(());
+            }
+
+            // Not found as either seller or buyer
+            Err(ContractError::Unauthorized)
+        }
+
+        /// Helper function to check if all parties have signed
+        fn all_parties_signed(&self) -> bool {
+            // Check all sellers have signed
+            for seller in &self.sellers {
+                if seller.signed_at.is_none() {
+                    return false;
+                }
+            }
+
+            // Check all buyers have signed
+            for buyer in &self.buyers {
+                if buyer.signed_at.is_none() {
+                    return false;
+                }
+            }
+
+            true
+        }
+
+        /// Helper function to check if this is the first signature
+        fn is_first_signature(&self) -> bool {
+            // Check if any seller has signed
+            for seller in &self.sellers {
+                if seller.signed_at.is_some() {
+                    return false;
+                }
+            }
+
+            // Check if any buyer has signed
+            for buyer in &self.buyers {
+                if buyer.signed_at.is_some() {
+                    return false;
+                }
+            }
+
+            true
+        }
+
         /// Filter out invalid/blank parties
         fn filter_valid_parties(parties: Vec<Party>) -> Vec<Party> {
             parties
@@ -348,6 +506,13 @@ mod propertysale {
             let valid_sellers = Self::filter_valid_parties(sellers);
             let valid_buyers = Self::filter_valid_parties(buyers);
 
+            // Use a valid property address if provided one is invalid
+            let valid_property_address = if Self::is_valid_property_address(&property_address) {
+                property_address
+            } else {
+                Self::default_property_address()
+            };
+
             Self::env().emit_event(ContractCreated { owner: caller });
 
             Self {
@@ -358,7 +523,7 @@ mod propertysale {
                 pending_field_changes: Vec::new(),
                 sellers: valid_sellers,
                 buyers: valid_buyers,
-                property_address,
+                property_address: valid_property_address,
                 purchase_price,
                 deposit,
                 balance,
@@ -373,7 +538,7 @@ mod propertysale {
             Self::new(
                 Vec::new(),
                 Vec::new(),
-                Default::default(),
+                Self::default_property_address(),
                 None,
                 None,
                 None,
@@ -505,13 +670,27 @@ mod propertysale {
                                 offer_date: self.env().block_timestamp(),
                             };
 
-                            // Log the change
-                            let old_value = format!("{:?}", self.offer);
-                            let new_value_str = format!("{:?}", Some(&new_offer));
-                            self.log_field_change("offer", &old_value, &new_value_str);
+                            // Log the offer change
+                            let old_offer_value = format!("{:?}", self.offer);
+                            let new_offer_value_str = format!("{:?}", Some(&new_offer));
+                            self.log_direct_field_change(
+                                "offer",
+                                &old_offer_value,
+                                &new_offer_value_str,
+                            );
 
                             // Set the new offer
                             self.offer = Some(new_offer);
+
+                            // Change contract status to UnderOffer when buyer submits an offer
+                            let old_status_value = format!("{:?}", self.status);
+                            self.status = ContractStatus::UnderOffer;
+                            let new_status_value = format!("{:?}", self.status);
+                            self.log_direct_field_change(
+                                "status",
+                                &old_status_value,
+                                &new_status_value,
+                            );
 
                             ManageOfferResponse {
                                 success: true,
@@ -531,7 +710,7 @@ mod propertysale {
                     match &self.offer {
                         Some(_) => {
                             // Capture old value before mutable borrow
-                            let old_value = format!("{:?}", self.offer);
+                            let old_offer_value = format!("{:?}", self.offer);
 
                             // Now get mutable reference and update status
                             if let Some(ref mut existing_offer) = self.offer {
@@ -543,8 +722,34 @@ mod propertysale {
                                 };
                             }
 
-                            let new_value_str = format!("{:?}", self.offer);
-                            self.log_field_change("offer", &old_value, &new_value_str);
+                            let new_offer_value_str = format!("{:?}", self.offer);
+                            self.log_direct_field_change(
+                                "offer",
+                                &old_offer_value,
+                                &new_offer_value_str,
+                            );
+
+                            // Handle contract status changes based on action
+                            match _request.action {
+                                OfferAction::Cancel => {
+                                    // When buyer cancels offer, set contract status back to Draft
+                                    let old_status_value = format!("{:?}", self.status);
+                                    self.status = ContractStatus::Draft;
+                                    let new_status_value = format!("{:?}", self.status);
+                                    self.log_direct_field_change(
+                                        "status",
+                                        &old_status_value,
+                                        &new_status_value,
+                                    );
+                                }
+                                OfferAction::Accept | OfferAction::Reject => {
+                                    // Sellers accepting/rejecting offers don't change contract status automatically
+                                    // Status changes can be handled separately if needed
+                                }
+                                OfferAction::Submit => {
+                                    // This won't happen due to match above
+                                }
+                            }
 
                             ManageOfferResponse {
                                 success: true,
@@ -588,10 +793,73 @@ mod propertysale {
             });
 
             // === BEGIN CUSTOM LOGIC ===
-            // TODO: Implement your sign contract logic here
-            let response = SignContractResponse {
-                success: false,
-                error_message: None,
+            let caller = self.env().caller();
+
+            // Validate contract is ready for signing
+            if let Err(error_msg) = self.validate_contract_ready_for_signing() {
+                return Ok(SignContractResponse {
+                    success: false,
+                    error_message: Some(error_msg),
+                });
+            }
+
+            // Check if this is the first signature (before any changes)
+            let is_first = self.is_first_signature();
+
+            // Find and sign the party
+            let response = match self.find_and_sign_party(caller) {
+                Ok(_) => {
+                    // Log the sellers change
+                    let sellers_value = format!("{:?}", self.sellers);
+                    self.log_direct_field_change("sellers", "sellers_updated", &sellers_value);
+
+                    // Log the buyers change
+                    let buyers_value = format!("{:?}", self.buyers);
+                    self.log_direct_field_change("buyers", "buyers_updated", &buyers_value);
+
+                    // Handle contract status changes
+                    if is_first {
+                        // First party to sign - change status to Signing
+                        let old_status_value = format!("{:?}", self.status);
+                        self.status = ContractStatus::Signing;
+                        let new_status_value = format!("{:?}", self.status);
+                        self.log_direct_field_change(
+                            "status",
+                            &old_status_value,
+                            &new_status_value,
+                        );
+                    } else if self.all_parties_signed() {
+                        // All parties have signed - change status to Signed
+                        let old_status_value = format!("{:?}", self.status);
+                        self.status = ContractStatus::Signed;
+                        let new_status_value = format!("{:?}", self.status);
+                        self.log_direct_field_change(
+                            "status",
+                            &old_status_value,
+                            &new_status_value,
+                        );
+                    }
+
+                    SignContractResponse {
+                        success: true,
+                        error_message: None,
+                    }
+                }
+                Err(contract_error) => {
+                    let error_msg = match contract_error {
+                        ContractError::Unauthorized => {
+                            "Only buyers and sellers can sign the contract".to_string()
+                        }
+                        ContractError::InvalidInput => {
+                            "Party has already signed or invalid signing attempt".to_string()
+                        }
+                        _ => "Signing failed".to_string(),
+                    };
+                    SignContractResponse {
+                        success: false,
+                        error_message: Some(error_msg),
+                    }
+                }
             };
             // === END CUSTOM LOGIC ===
 
@@ -600,7 +868,7 @@ mod propertysale {
 
             self.env().emit_event(SignContractResponseGenerated {
                 request_id,
-                success: true,
+                success: response.success,
             });
 
             Ok(response)
@@ -793,6 +1061,10 @@ mod propertysale {
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
+            }
+
+            if !Self::is_valid_property_address(&new_value) {
+                return Err(ContractError::InvalidInput);
             }
 
             let old_value = format!("{:?}", self.property_address);
