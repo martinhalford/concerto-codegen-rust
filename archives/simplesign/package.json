@@ -1,0 +1,26 @@
+{
+  "name": "SimpleSign",
+  "version": "0.1.0",
+  "description": "Simple contract with minimal signing functionality",
+  "keywords": [
+    "accord-project",
+    "contract",
+    "signing",
+    "legal-tech"
+  ],
+  "author": "beNEXT",
+  "license": "Apache-2.0",
+  "accordproject": {
+    "runtime": "typescript",
+    "template": "clause",
+    "cicero": "^0.25.0",
+    "namespace": "org.accordproject.simplesign"
+  },
+  "files": [
+    "model/**/*",
+    "text/**/*",
+    "logic/**/*",
+    "package.json",
+    "README.md"
+  ]
+}
