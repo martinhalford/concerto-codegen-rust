@@ -1,44 +1,44 @@
 {
-  "$class": "simplesign@1.0.0.SimpleSign",
-  "contractId": "SIMPLESIGN_001",
-  "party": [
-    {
-      "$class": "simplesign@1.0.0.Party",
-      "partyId": "PARTY_001",
-      "fullName": "Sarah Elizabeth Johnson",
-      "email": "sarah.johnson@email.com",
-      "mobile": "+44 7890 123456",
-      "address": {
-        "$class": "simplesign@1.0.0.Address",
-        "addressLine1": "42 Queen's Gate",
-        "addressLine2": "South Kensington",
-        "city": "London",
-        "postCode": "SW7 5HR",
-        "county": "Greater London",
-        "country": "UK"
-      },
-      "walletAddress": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-      "signedAt": "2025-08-14T10:27:33.000Z"
-    },
-    {
-      "$class": "simplesign@1.0.0.Party",
-      "partyId": "PARTY_002",
-      "fullName": "Brian Felix Williams",
-      "email": "brian.williams@email.com",
-      "mobile": "+44 7438 123456",
-      "address": {
-        "$class": "simplesign@1.0.0.Address",
-        "addressLine1": "42 Queen's Gate",
-        "addressLine2": "South Kensington",
-        "city": "London",
-        "postCode": "SW7 5HR",
-        "county": "Greater London",
-        "country": "UK"
-      },
-      "walletAddress": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-      "signedAt": "2025-08-14T17:15:09.000Z"
-    }
-  ],
-  "contractDate": "2025-08-15T10:00:00.000Z",
-  "contractStatus": "Completed"
+	"$class": "simplesign@1.0.0.SimpleSign",
+	"contractId": "SIMPLESIGN_001",
+	"party": [
+		{
+			"$class": "simplesign@1.0.0.Party",
+			"partyId": "PARTY_001",
+			"fullName": "Alice Elizabeth Johnson",
+			"email": "alice.johnson@email.com",
+			"mobile": "+44 7890 123456",
+			"address": {
+				"$class": "simplesign@1.0.0.Address",
+				"addressLine1": "42 Queen's Gate",
+				"addressLine2": "South Kensington",
+				"city": "London",
+				"postCode": "SW7 5HR",
+				"county": "Greater London",
+				"country": "UK"
+			},
+			"walletAddress": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+			"signedAt": "2025-08-14T10:27:33.000Z"
+		},
+		{
+			"$class": "simplesign@1.0.0.Party",
+			"partyId": "PARTY_002",
+			"fullName": "Bob Felix Williams",
+			"email": "bob.williams@email.com",
+			"mobile": "+44 7438 123456",
+			"address": {
+				"$class": "simplesign@1.0.0.Address",
+				"addressLine1": "123 High Street",
+				"addressLine2": "Fulham",
+				"city": "London",
+				"postCode": "SW6 5JH",
+				"county": "Greater London",
+				"country": "UK"
+			},
+			"walletAddress": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+			"signedAt": "2025-08-14T17:15:09.000Z"
+		}
+	],
+	"contractDate": "2025-08-15T10:00:00.000Z",
+	"contractStatus": "Completed"
 }

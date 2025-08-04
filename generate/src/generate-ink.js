@@ -354,11 +354,8 @@ function generateContractStorage(contractTypes, contractName) {
   storageFields.push("        owner: AccountId");
   storageFields.push("        paused: bool");
 
-  // Add audit log storage
-  storageFields.push(
-    "        audit_log: ink::storage::Mapping<u64, AuditLogEntry>"
-  );
-  storageFields.push("        audit_log_count: u64");
+  // Add complete transaction history tracking
+  storageFields.push("        transaction_history: Vec<TransactionRecord>");
 
   // Add template model data as storage if available
   if (contractTypes.templateModels.length > 0) {
@@ -404,6 +401,19 @@ function generateContractEvents(contractTypes) {
     pub struct ContractUnpaused {
         #[ink(topic)]
         pub by: AccountId,
+    }`);
+
+  // Add field change tracking event
+  events.push(`    #[ink(event)]
+    pub struct ContractDataChanged {
+        #[ink(topic)]
+        pub field_name: String,
+        #[ink(topic)]
+        pub changed_by: AccountId,
+        pub old_value: String,
+        pub new_value: String,
+        pub block_number: u64,
+        pub timestamp: u64,
     }`);
 
   // Add events for request/response patterns
@@ -632,38 +642,28 @@ function generateAuditLogEvents() {
  */
 function generateAuditLogImplementation() {
   return `
-        // === AUDIT LOG FUNCTIONALITY ===
+        // === FIELD CHANGE LOGGING ===
         
-        /// Record a function call in the audit log
-        fn log_function_call(&mut self, function_name: &str, request_id: u64) {
-            let caller = self.env().caller();
-            let timestamp = self.env().block_timestamp();
-            
-            let log_entry = AuditLogEntry {
-                caller,
-                timestamp,
-                function_name: function_name.to_string(),
-                request_id,
-            };
-            
-            // Store with current count as index, then increment
-            self.audit_log.insert(self.audit_log_count, &log_entry);
-            self.audit_log_count = self.audit_log_count.saturating_add(1);
-            
-            self.env().emit_event(FunctionCalled {
-                caller,
-                function_name: function_name.to_string(),
-                request_id,
-                timestamp,
-            });
-        }
-
         /// Record a field change with before/after values
         fn log_field_change(&mut self, field_name: &str, old_value: &str, new_value: &str) {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
             let block_number = self.env().block_number() as u64;
             
+            // Store in complete transaction history
+            let transaction_record = TransactionRecord {
+                field_name: field_name.to_string(),
+                old_value: old_value.to_string(),
+                new_value: new_value.to_string(),
+                changed_by: caller,
+                timestamp,
+                block_number,
+            };
+            
+            // Add to complete transaction history (no limit)
+            self.transaction_history.push(transaction_record);
+            
+            // Emit event for external monitoring
             self.env().emit_event(ContractDataChanged {
                 field_name: field_name.to_string(),
                 changed_by: caller,
@@ -674,25 +674,77 @@ function generateAuditLogImplementation() {
             });
         }
 
-
-
-        #[ink(message)]
-        pub fn get_audit_log_count(&self) -> u64 {
-            self.audit_log_count
+        /// Record a method call in transaction history
+        fn log_method_call(&mut self, method_name: &str, description: &str) {
+            let caller = self.env().caller();
+            let timestamp = self.env().block_timestamp();
+            let block_number = self.env().block_number() as u64;
+            
+            // Store method call in transaction history
+            let transaction_record = TransactionRecord {
+                field_name: method_name.to_string(),
+                old_value: "method_call".to_string(),
+                new_value: description.to_string(),
+                changed_by: caller,
+                timestamp,
+                block_number,
+            };
+            
+            // Add to complete transaction history (no limit)
+            self.transaction_history.push(transaction_record);
         }
 
+        // === TRANSACTION HISTORY QUERY METHODS ===
+
         #[ink(message)]
-        pub fn get_audit_log(&self, start: u64, limit: u64) -> Vec<AuditLogEntry> {
-            let mut entries = Vec::new();
-            let end = start.saturating_add(limit).min(self.audit_log_count);
+        pub fn get_transaction_history(&self, limit: Option<u32>) -> Vec<TransactionRecord> {
+            let mut history = self.transaction_history.clone();
             
-            for i in start..end {
-                if let Some(entry) = self.audit_log.get(i) {
-                    entries.push(entry);
+            // Reverse to get most recent first
+            history.reverse();
+            
+            // Apply limit if specified
+            if let Some(max_count) = limit {
+                #[allow(clippy::cast_possible_truncation)]
+                let max_count_usize = max_count as usize;
+                if history.len() > max_count_usize {
+                    history.truncate(max_count_usize);
                 }
             }
             
-            entries
+            history
+        }
+
+        #[ink(message)]
+        pub fn get_transaction_count(&self) -> u32 {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                self.transaction_history.len() as u32
+            }
+        }
+
+        #[ink(message)]
+        pub fn get_contract_activity_summary(&self) -> ActivitySummary {
+            if self.transaction_history.is_empty() {
+                return ActivitySummary {
+                    total_transactions: 0,
+                    latest_field_name: "none".to_string(),
+                    latest_changed_by: self.owner,
+                    latest_block_number: 0,
+                    has_transactions: false,
+                };
+            }
+            
+            // Get the most recent transaction (last in the vector)
+            let latest_transaction = &self.transaction_history[self.transaction_history.len().saturating_sub(1)];
+            ActivitySummary {
+                #[allow(clippy::cast_possible_truncation)]
+                total_transactions: self.transaction_history.len() as u32,
+                latest_field_name: latest_transaction.field_name.clone(),
+                latest_changed_by: latest_transaction.changed_by,
+                latest_block_number: latest_transaction.block_number,
+                has_transactions: true,
+            }
         }`;
 }
 
@@ -853,8 +905,7 @@ function generateContractImplementation(contractTypes, contractName) {
             Self {
                 owner: caller,
                 paused: false,
-                audit_log: ink::storage::Mapping::default(),
-                audit_log_count: 0,
+                transaction_history: Vec::new(),
 ${constructorInit}
             }
         }
@@ -897,6 +948,7 @@ ${constructorInit}
             }
             
             self.paused = true;
+            self.log_method_call("pause", "contract paused");
             self.env().emit_event(ContractPaused { by: caller });
             Ok(())
         }
@@ -909,6 +961,7 @@ ${constructorInit}
             }
             
             self.paused = false;
+            self.log_method_call("unpause", "contract unpaused");
             self.env().emit_event(ContractUnpaused { by: caller });
             Ok(())
         }`;
@@ -963,8 +1016,10 @@ ${constructorInit}
             };
             // === END CUSTOM LOGIC ===
             
-            // Log function call for audit trail
-            self.log_function_call("${functionName}", request_id);
+            self.log_method_call("${functionName}", "${functionName.replace(
+        /_/g,
+        " "
+      )} executed");
             
             self.env().emit_event(${response.name}Generated {
                 request_id,
@@ -1014,6 +1069,11 @@ ${constructorInit}
       const mappedType = mapTypeForInkStorage(prop.rustType);
       const fieldName = prop.rustName;
 
+      // Skip generating set methods for Vec<T> fields - use add/remove instead
+      if (mappedType.startsWith("Vec<")) {
+        continue;
+      }
+
       // Inline the update logic to avoid borrow checker issues
       let updateMethod;
       if (mappedType === "String") {
@@ -1043,15 +1103,45 @@ ${constructorInit}
                 self.${fieldName} = new_value;
             }`;
       } else if (mappedType.startsWith("Option<")) {
-        // For optional types, track presence/absence changes meaningfully
-        updateMethod = `let old_value = if self.${fieldName}.is_some() { "Some(value)" } else { "None" };
-            let new_value_str = if new_value.is_some() { "Some(value)" } else { "None" };
+        // For optional types, show actual values when present
+        const innerType = mappedType.slice(7, -1); // Extract T from Option<T>
+        let valueFormatter;
+
+        if (innerType === "String") {
+          valueFormatter = "val.clone()";
+        } else if (innerType === "bool" || innerType.match(/^[ui]\d+$/)) {
+          valueFormatter = "val.to_string()";
+        } else {
+          valueFormatter = 'format!("{:?}", val)';
+        }
+
+        updateMethod = `let old_value = match &self.${fieldName} { 
+                Some(val) => format!("Some({})", ${valueFormatter}), 
+                None => "None".to_string() 
+            };
+            let new_value_str = match &new_value { 
+                Some(val) => format!("Some({})", ${valueFormatter}), 
+                None => "None".to_string() 
+            };
             if old_value != new_value_str {
-                self.log_field_change("${fieldName}", old_value, new_value_str);
+                self.log_field_change("${fieldName}", &old_value, &new_value_str);
             }
             self.${fieldName} = new_value;`;
+      } else if (
+        contractTypes.enums &&
+        contractTypes.enums.some((e) => e.name === mappedType)
+      ) {
+        // For enum types, show actual enum values
+        updateMethod = `if self.${fieldName} != new_value {
+                let old_value = format!("{:?}", self.${fieldName});
+                let new_value_str = format!("{:?}", new_value);
+                self.log_field_change("${fieldName}", &old_value, &new_value_str);
+                self.${fieldName} = new_value;
+            } else {
+                self.${fieldName} = new_value;
+            }`;
       } else {
-        // For complex types, log the change with meaningful descriptions
+        // For other complex types, log the change with meaningful descriptions
         updateMethod = `self.log_field_change("${fieldName}", "${generateHumanReadableType(
           mappedType
         )}_updated", "${generateHumanReadableType(mappedType)}_modified");
@@ -1074,6 +1164,79 @@ ${constructorInit}
             ${updateMethod}
             Ok(())
         }`;
+    }
+  }
+
+  // Generate add/remove methods for Vec<T> fields
+  if (templateModel) {
+    for (const prop of templateModel.properties.filter(
+      (p) =>
+        !["$class", "$timestamp", "clauseId", "$identifier"].includes(p.name)
+    )) {
+      const mappedType = mapTypeForInkStorage(prop.rustType);
+      const fieldName = prop.rustName;
+
+      // Only generate add/remove methods for Vec<T> fields
+      if (mappedType.startsWith("Vec<")) {
+        const innerType = mappedType.slice(4, -1); // Extract T from Vec<T>
+        // Generate singular item name for method names
+        // For "party" field -> "party" method, for "items" field -> "item" method
+        const itemName =
+          fieldName.endsWith("s") && !fieldName.endsWith("ss")
+            ? fieldName.slice(0, -1) // "items" -> "item"
+            : fieldName; // "party" -> "party"
+
+        // Generate add method
+        implementation += `
+
+        #[ink(message)]
+        pub fn add_${itemName}(&mut self, item: ${innerType}) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+            
+            let old_count = self.${fieldName}.len();
+            self.${fieldName}.push(item.clone());
+            
+            // Log the addition with the new item details
+            let added_str = format!("{:?}", item);
+            self.log_field_change("${fieldName}", &format!("count: {}", old_count), &format!("added: {}", added_str));
+            
+            Ok(())
+        }`;
+
+        // Generate remove by index method
+        implementation += `
+
+        #[ink(message)]
+        pub fn remove_${itemName}_by_index(&mut self, index: u32) -> Result<bool> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+            
+            let index = index as usize;
+            if index >= self.${fieldName}.len() {
+                return Ok(false); // Index out of bounds
+            }
+            
+            let removed_item = self.${fieldName}.remove(index);
+            let removed_str = format!("{:?}", removed_item);
+            let new_count = self.${fieldName}.len();
+            self.log_field_change("${fieldName}", &format!("count: {}", new_count.saturating_add(1)), &format!("removed: {}", removed_str));
+            
+            Ok(true)
+        }`;
+      }
     }
   }
 
@@ -1239,10 +1402,8 @@ function createInkLibRs(
 ) {
   const dataStructures = generateDataStructures(contractTypes);
   const enumStructures = generateEnumStructures(contractTypes);
-  const auditLogTypes = generateAuditLogTypes();
   const contractStorage = generateContractStorage(contractTypes, contractName);
   const contractEvents = generateContractEvents(contractTypes);
-  const auditLogEvents = generateAuditLogEvents();
   const contractImpl = generateContractImplementation(
     contractTypes,
     contractName
@@ -1254,6 +1415,7 @@ function createInkLibRs(
 mod ${contractName.toLowerCase().replace(/[^a-z0-9_]/g, "_")} {
     use ink::prelude::string::{String, ToString};
     use ink::prelude::vec::Vec;
+    use ink::prelude::format;
 
     // Error types
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -1267,17 +1429,40 @@ mod ${contractName.toLowerCase().replace(/[^a-z0-9_]/g, "_")} {
 
     pub type Result<T> = core::result::Result<T, ContractError>;
 
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct TransactionRecord {
+        pub field_name: String,
+        pub old_value: String,
+        pub new_value: String,
+        pub changed_by: AccountId,
+        pub timestamp: u64,
+        pub block_number: u64,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct ActivitySummary {
+        pub total_transactions: u32,
+        pub latest_field_name: String,
+        pub latest_changed_by: AccountId,
+        pub latest_block_number: u64,
+        pub has_transactions: bool,
+    }
+
 ${dataStructures}
 
 ${enumStructures}
 
-${auditLogTypes}
-
 ${contractStorage}
 
 ${contractEvents}
-
-${auditLogEvents}
 
 ${contractImpl}
 
