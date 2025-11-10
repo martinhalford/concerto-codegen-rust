@@ -1,0 +1,104 @@
+namespace realestatesaleuk@1.0.0
+
+import org.accordproject.contract@0.2.0.{Contract, Clause} from https://models.accordproject.org/accordproject/contract@0.2.0.cto
+import org.accordproject.runtime@0.2.0.{Request,Response} from https://models.accordproject.org/accordproject/runtime@0.2.0.cto
+
+enum ContractStatus {
+  o Draft
+  o UnderOffer
+  o Signing
+  o Signed
+  o Superseded
+  o Cancelled
+  o Paused
+}
+
+enum CurrencyCode {
+  o EUR
+  o GBP
+  o USD
+}
+
+enum Country {
+  o UK
+  o USA
+  o AUSTRALIA
+  o FRANCE
+  o GERMANY
+  o ITALY
+}
+
+enum OfferAction {
+  o Submit
+  o Accept
+  o Reject
+  o Cancel
+}
+
+concept Money {
+  o Double amount
+  o CurrencyCode currencyCode
+} 
+
+enum OfferStatus {
+  o Pending
+  o Accepted
+  o Rejected
+  o Cancelled
+}
+
+concept Offer {
+  o Money offer
+  o OfferStatus offerStatus
+  o DateTime offerDate
+}
+
+concept Address {
+  o String addressLine1
+  o String addressLine2
+  o String city
+  o String postCode
+  o String county
+  o Country country
+}
+
+concept Party {
+  o String partyId
+  o String fullName
+  o String email
+  o String mobile
+  o Address address
+  o String walletAddress
+  o DateTime signedAt optional
+}
+
+transaction ManageOfferRequest extends Request {
+  o OfferAction action
+  o Money offer optional
+}
+
+transaction ManageOfferResponse extends Response {
+  o Boolean success
+  o String errorMessage optional
+}
+
+transaction SignContractRequest extends Request {
+}
+
+transaction SignContractResponse extends Response {
+  o Boolean success
+  o String errorMessage optional
+}
+
+@template
+asset PropertySale extends Contract {
+  o Party[] sellers
+  o Party[] buyers
+  o Address propertyAddress
+  o Money purchasePrice optional
+  o Money deposit optional
+  o Money balance optional
+  o Offer offer optional
+  o DateTime agreementDate optional
+  o ContractStatus status
+}

@@ -2,7 +2,7 @@
 
 #[ink::contract]
 mod latedeliveryandpenalty {
-    use ink::prelude::string::String;
+    use ink::prelude::string::{String, ToString};
     use ink::prelude::vec::Vec;
 
     // Error types
@@ -16,33 +16,6 @@ mod latedeliveryandpenalty {
     }
 
     pub type Result<T> = core::result::Result<T, ContractError>;
-
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub struct DraftRequest {
-        pub requester: AccountId,
-        pub template_data: String,
-        pub status: DraftStatus,
-        pub ipfs_hash: Option<String>,
-        pub error_message: Option<String>,
-        pub created_at: u64,
-        pub updated_at: u64,
-    }
-
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub enum DraftStatus {
-        Pending,
-        Processing,
-        Ready,
-        Failed,
-    }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
     #[cfg_attr(
@@ -71,6 +44,15 @@ mod latedeliveryandpenalty {
         feature = "std",
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
+    pub struct DotNetNamespace {
+        pub namespace: String,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
     pub struct Duration {
         pub amount: u128,
         pub unit: String,
@@ -86,13 +68,90 @@ mod latedeliveryandpenalty {
         pub unit: u64,
     }
 
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub enum Month {
+        #[default]
+        January,
+        February,
+        March,
+        April,
+        May,
+        June,
+        July,
+        August,
+        September,
+        October,
+        November,
+        December,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub enum Day {
+        #[default]
+        Monday,
+        Tuesday,
+        Wednesday,
+        Thursday,
+        Friday,
+        Saturday,
+        Sunday,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub enum TemporalUnit {
+        #[default]
+        Seconds,
+        Minutes,
+        Hours,
+        Days,
+        Weeks,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub enum PeriodUnit {
+        #[default]
+        Days,
+        Weeks,
+        Months,
+        Quarters,
+        Years,
+    }
+
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct AuditLogEntry {
+        pub caller: AccountId,
+        pub timestamp: u64,
+        pub function_name: String,
+        pub request_id: u64,
+    }
+
     #[ink(storage)]
     pub struct LateDeliveryAndPenalty {
         owner: AccountId,
         paused: bool,
-        next_request_id: u64,
-        draft_requests: ink::storage::Mapping<u64, DraftRequest>,
-        user_drafts: ink::storage::Mapping<AccountId, Vec<u64>>,
+        audit_log: ink::storage::Mapping<u64, AuditLogEntry>,
+        audit_log_count: u64,
         force_majeure: bool,
         penalty_duration: u64,
         penalty_percentage: u128,
@@ -104,60 +163,57 @@ mod latedeliveryandpenalty {
     #[ink(event)]
     pub struct ContractCreated {
         #[ink(topic)]
-        owner: AccountId,
+        pub owner: AccountId,
     }
 
     #[ink(event)]
     pub struct ContractPaused {
         #[ink(topic)]
-        by: AccountId,
+        pub by: AccountId,
     }
 
     #[ink(event)]
     pub struct ContractUnpaused {
         #[ink(topic)]
-        by: AccountId,
-    }
-
-    #[ink(event)]
-    pub struct DraftRequested {
-        #[ink(topic)]
-        requester: AccountId,
-        request_id: u64,
-        template_data: String, // JSON-serialized template data
-        timestamp: u64,
-    }
-
-    #[ink(event)]
-    pub struct DraftReady {
-        #[ink(topic)]
-        requester: AccountId,
-        request_id: u64,
-        ipfs_hash: String,
-        timestamp: u64,
-    }
-
-    #[ink(event)]
-    pub struct DraftError {
-        #[ink(topic)]
-        requester: AccountId,
-        request_id: u64,
-        error_message: String,
-        timestamp: u64,
+        pub by: AccountId,
     }
 
     #[ink(event)]
     pub struct LateDeliveryAndPenaltyRequestSubmitted {
         #[ink(topic)]
-        submitter: AccountId,
-        request_id: u64,
+        pub submitter: AccountId,
+        #[ink(topic)]
+        pub request_id: u64,
     }
 
     #[ink(event)]
     pub struct LateDeliveryAndPenaltyResponseGenerated {
         #[ink(topic)]
-        request_id: u64,
-        success: bool,
+        pub request_id: u64,
+        pub success: bool,
+    }
+
+
+    #[ink(event)]
+    pub struct FunctionCalled {
+        #[ink(topic)]
+        pub caller: AccountId,
+        #[ink(topic)]
+        pub function_name: String,
+        pub request_id: u64,
+        pub timestamp: u64,
+    }
+
+    #[ink(event)]
+    pub struct ContractDataChanged {
+        #[ink(topic)]
+        pub field_name: String,
+        #[ink(topic)]
+        pub changed_by: AccountId,
+        pub old_value: String,
+        pub new_value: String,
+        pub block_number: u64,
+        pub timestamp: u64,
     }
 
     impl LateDeliveryAndPenalty {
@@ -171,15 +227,14 @@ mod latedeliveryandpenalty {
             fractional_part: String,
         ) -> Self {
             let caller = Self::env().caller();
-
+            
             Self::env().emit_event(ContractCreated { owner: caller });
 
             Self {
                 owner: caller,
                 paused: false,
-                next_request_id: 1,
-                draft_requests: ink::storage::Mapping::default(),
-                user_drafts: ink::storage::Mapping::default(),
+                audit_log: ink::storage::Mapping::default(),
+                audit_log_count: 0,
                 force_majeure,
                 penalty_duration,
                 penalty_percentage,
@@ -191,7 +246,14 @@ mod latedeliveryandpenalty {
 
         #[ink(constructor)]
         pub fn default() -> Self {
-            Self::new(false, 0, 0, 0, 0, String::new())
+            Self::new(
+                false,
+                0,
+                0,
+                0,
+                0,
+                String::new(),
+            )
         }
 
         #[ink(message)]
@@ -210,7 +272,7 @@ mod latedeliveryandpenalty {
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-
+            
             self.paused = true;
             self.env().emit_event(ContractPaused { by: caller });
             Ok(())
@@ -222,253 +284,47 @@ mod latedeliveryandpenalty {
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-
+            
             self.paused = false;
             self.env().emit_event(ContractUnpaused { by: caller });
             Ok(())
         }
 
         #[ink(message)]
-        pub fn process_request(
+        pub fn late_delivery_and_penalty(
             &mut self,
-            request: LateDeliveryAndPenaltyRequest,
+            _request: LateDeliveryAndPenaltyRequest,
         ) -> Result<LateDeliveryAndPenaltyResponse> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
 
-            // Generate a simple request ID
             let request_id = self.env().block_number() as u64;
+            
+            self.env().emit_event(LateDeliveryAndPenaltyRequestSubmitted {
+                submitter: self.env().caller(),
+                request_id,
+            });
 
-            self.env()
-                .emit_event(LateDeliveryAndPenaltyRequestSubmitted {
-                    submitter: self.env().caller(),
-                    request_id,
-                });
-
-            // Process the request logic here
-            let response = self.execute_contract_logic(request)?;
-
-            self.env()
-                .emit_event(LateDeliveryAndPenaltyResponseGenerated {
-                    request_id,
-                    success: true,
-                });
+            // === BEGIN CUSTOM LOGIC ===
+            // TODO: Implement your late delivery and penalty logic here
+            let response = LateDeliveryAndPenaltyResponse {
+                penalty: 0,
+                buyer_may_terminate: false,
+            };
+            // === END CUSTOM LOGIC ===
+            
+            // Log function call for audit trail
+            self.log_function_call("late_delivery_and_penalty", request_id);
+            
+            self.env().emit_event(LateDeliveryAndPenaltyResponseGenerated {
+                request_id,
+                success: true,
+            });
 
             Ok(response)
         }
 
-        //
-        // === EXECUTE CONTRACT LOGIC ===
-        //
-        fn execute_contract_logic(
-            &self,
-            request: LateDeliveryAndPenaltyRequest,
-        ) -> Result<LateDeliveryAndPenaltyResponse> {
-            // If force majeure is active (either contract-level or request-specific), no penalties apply
-            if self.force_majeure || request.force_majeure {
-                return Ok(LateDeliveryAndPenaltyResponse {
-                    penalty: 0,
-                    buyer_may_terminate: false,
-                });
-            }
-
-            // Check if delivery was actually late
-            let penalty = match request.delivered_at {
-                Some(delivered_timestamp) => {
-                    // Calculate delay in seconds - use saturating_sub to prevent underflow
-                    let delay_seconds = delivered_timestamp.saturating_sub(request.agreed_delivery);
-
-                    // Apply fractional part rounding to total delay
-                    let fractional_unit_seconds = self.get_fractional_unit_seconds();
-                    let rounded_delay_units = if fractional_unit_seconds > 0 {
-                        // Round UP any fractional part (ceiling division) - use div_ceil to avoid arithmetic side effects
-                        delay_seconds.div_ceil(fractional_unit_seconds)
-                    } else {
-                        // Fallback: treat as 1 unit if fractional_unit_seconds is 0
-                        1
-                    };
-
-                    // Calculate penalty based on rounded delay units
-                    // Each unit of delay incurs the penalty percentage
-                    let penalty_per_unit = request
-                        .goods_value
-                        .checked_mul(self.penalty_percentage)
-                        .and_then(|v| v.checked_div(100))
-                        .unwrap_or(0);
-
-                    let total_penalty = penalty_per_unit
-                        .checked_mul(rounded_delay_units as u128)
-                        .unwrap_or(penalty_per_unit);
-
-                    // Apply cap percentage if penalty exceeds it
-                    let max_penalty = request
-                        .goods_value
-                        .checked_mul(self.cap_percentage)
-                        .and_then(|v| v.checked_div(100))
-                        .unwrap_or(0);
-
-                    total_penalty.min(max_penalty)
-                }
-                None => {
-                    // Never delivered - apply maximum penalty (cap percentage)
-                    request
-                        .goods_value
-                        .checked_mul(self.cap_percentage)
-                        .and_then(|v| v.checked_div(100))
-                        .unwrap_or(0)
-                }
-            };
-
-            // Determine if buyer may terminate
-            // Buyer may terminate if penalty reaches or exceeds the termination threshold
-            let termination_threshold = request
-                .goods_value
-                .checked_mul(self.termination as u128)
-                .and_then(|v| v.checked_div(100))
-                .unwrap_or(0);
-            let buyer_may_terminate = penalty >= termination_threshold;
-
-            Ok(LateDeliveryAndPenaltyResponse {
-                penalty,
-                buyer_may_terminate,
-            })
-        }
-
-        /// Convert fractional_part string to seconds for calculation
-        /// This helper function maps common time units to seconds
-        fn get_fractional_unit_seconds(&self) -> u64 {
-            match self.fractional_part.to_lowercase().as_str() {
-                "day" | "days" => 86400,  // 24 * 60 * 60
-                "hour" | "hours" => 3600, // 60 * 60
-                "minute" | "minutes" => 60,
-                "week" | "weeks" => 604800,    // 7 * 24 * 60 * 60
-                "month" | "months" => 2592000, // 30 * 24 * 60 * 60 (approximate)
-                _ => 86400,                    // Default to day if unrecognized unit
-            }
-        }
-
-        //
-        // === DRAFT REQUEST FUNCTIONALITY ===
-        //
-        #[ink(message)]
-        pub fn request_draft(&mut self, template_data: String) -> Result<u64> {
-            if self.paused {
-                return Err(ContractError::ContractPaused);
-            }
-
-            let caller = self.env().caller();
-            let request_id = self.next_request_id;
-            let timestamp = self.env().block_timestamp();
-
-            let draft_request = DraftRequest {
-                requester: caller,
-                template_data: template_data.clone(),
-                status: DraftStatus::Pending,
-                ipfs_hash: None,
-                error_message: None,
-                created_at: timestamp,
-                updated_at: timestamp,
-            };
-
-            // Store the draft request
-            self.draft_requests.insert(request_id, &draft_request);
-
-            // Add to user's draft list
-            let mut user_drafts = self.user_drafts.get(caller).unwrap_or_default();
-            user_drafts.push(request_id);
-            self.user_drafts.insert(caller, &user_drafts);
-
-            // Increment request ID for next request (with overflow protection)
-            self.next_request_id = self.next_request_id.saturating_add(1);
-
-            // Emit event for off-chain service to pick up
-            self.env().emit_event(DraftRequested {
-                requester: caller,
-                request_id,
-                template_data,
-                timestamp,
-            });
-
-            Ok(request_id)
-        }
-
-        #[ink(message)]
-        pub fn submit_draft_result(&mut self, request_id: u64, ipfs_hash: String) -> Result<()> {
-            // Only owner (or authorized service) can submit results
-            let caller = self.env().caller();
-            if caller != self.owner {
-                return Err(ContractError::Unauthorized);
-            }
-
-            let mut draft_request = self
-                .draft_requests
-                .get(request_id)
-                .ok_or(ContractError::InvalidInput)?;
-
-            draft_request.status = DraftStatus::Ready;
-            draft_request.ipfs_hash = Some(ipfs_hash.clone());
-            draft_request.updated_at = self.env().block_timestamp();
-
-            self.draft_requests.insert(request_id, &draft_request);
-
-            self.env().emit_event(DraftReady {
-                requester: draft_request.requester,
-                request_id,
-                ipfs_hash,
-                timestamp: draft_request.updated_at,
-            });
-
-            Ok(())
-        }
-
-        #[ink(message)]
-        pub fn submit_draft_error(&mut self, request_id: u64, error_message: String) -> Result<()> {
-            let caller = self.env().caller();
-            if caller != self.owner {
-                return Err(ContractError::Unauthorized);
-            }
-
-            let mut draft_request = self
-                .draft_requests
-                .get(request_id)
-                .ok_or(ContractError::InvalidInput)?;
-
-            draft_request.status = DraftStatus::Failed;
-            draft_request.error_message = Some(error_message.clone());
-            draft_request.updated_at = self.env().block_timestamp();
-
-            self.draft_requests.insert(request_id, &draft_request);
-
-            self.env().emit_event(DraftError {
-                requester: draft_request.requester,
-                request_id,
-                error_message,
-                timestamp: draft_request.updated_at,
-            });
-
-            Ok(())
-        }
-
-        #[ink(message)]
-        pub fn get_draft_request(&self, request_id: u64) -> Option<DraftRequest> {
-            self.draft_requests.get(request_id)
-        }
-
-        #[ink(message)]
-        pub fn get_user_drafts(&self, user: AccountId) -> Vec<u64> {
-            self.user_drafts.get(user).unwrap_or_default()
-        }
-
-        #[ink(message)]
-        pub fn get_my_drafts(&self) -> Vec<u64> {
-            let caller = self.env().caller();
-            self.user_drafts.get(caller).unwrap_or_default()
-        }
-
-        //
-        // === CONTRACT CONFIGURATION ===
-        //  
         #[ink(message)]
         pub fn get_force_majeure(&self) -> bool {
             self.force_majeure
@@ -497,6 +353,203 @@ mod latedeliveryandpenalty {
         #[ink(message)]
         pub fn get_fractional_part(&self) -> String {
             self.fractional_part.clone()
+        }
+
+        #[ink(message)]
+        pub fn set_force_majeure(&mut self, new_value: bool) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+            
+            if self.force_majeure != new_value {
+                let old_value = self.force_majeure.to_string();
+                let new_value_str = new_value.to_string();
+                self.log_field_change("force_majeure", &old_value, &new_value_str);
+                self.force_majeure = new_value;
+            } else {
+                self.force_majeure = new_value;
+            }
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn set_penalty_duration(&mut self, new_value: u64) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+            
+            if self.penalty_duration != new_value {
+                let old_str = self.penalty_duration.to_string();
+                let new_str = new_value.to_string();
+                self.log_field_change("penalty_duration", &old_str, &new_str);
+                self.penalty_duration = new_value;
+            } else {
+                self.penalty_duration = new_value;
+            }
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn set_penalty_percentage(&mut self, new_value: u128) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+            
+            if self.penalty_percentage != new_value {
+                let old_str = self.penalty_percentage.to_string();
+                let new_str = new_value.to_string();
+                self.log_field_change("penalty_percentage", &old_str, &new_str);
+                self.penalty_percentage = new_value;
+            } else {
+                self.penalty_percentage = new_value;
+            }
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn set_cap_percentage(&mut self, new_value: u128) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+            
+            if self.cap_percentage != new_value {
+                let old_str = self.cap_percentage.to_string();
+                let new_str = new_value.to_string();
+                self.log_field_change("cap_percentage", &old_str, &new_str);
+                self.cap_percentage = new_value;
+            } else {
+                self.cap_percentage = new_value;
+            }
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn set_termination(&mut self, new_value: u64) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+            
+            if self.termination != new_value {
+                let old_str = self.termination.to_string();
+                let new_str = new_value.to_string();
+                self.log_field_change("termination", &old_str, &new_str);
+                self.termination = new_value;
+            } else {
+                self.termination = new_value;
+            }
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn set_fractional_part(&mut self, new_value: String) -> Result<()> {
+            if self.paused {
+                return Err(ContractError::ContractPaused);
+            }
+            
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+            
+            if self.fractional_part != new_value {
+                let old_value = self.fractional_part.clone();
+                self.log_field_change("fractional_part", &old_value, &new_value);
+                self.fractional_part = new_value;
+            } else {
+                self.fractional_part = new_value;
+            }
+            Ok(())
+        }
+
+
+
+
+        // === AUDIT LOG FUNCTIONALITY ===
+        
+        /// Record a function call in the audit log
+        fn log_function_call(&mut self, function_name: &str, request_id: u64) {
+            let caller = self.env().caller();
+            let timestamp = self.env().block_timestamp();
+            
+            let log_entry = AuditLogEntry {
+                caller,
+                timestamp,
+                function_name: function_name.to_string(),
+                request_id,
+            };
+            
+            // Store with current count as index, then increment
+            self.audit_log.insert(self.audit_log_count, &log_entry);
+            self.audit_log_count = self.audit_log_count.saturating_add(1);
+            
+            self.env().emit_event(FunctionCalled {
+                caller,
+                function_name: function_name.to_string(),
+                request_id,
+                timestamp,
+            });
+        }
+
+        /// Record a field change with before/after values
+        fn log_field_change(&mut self, field_name: &str, old_value: &str, new_value: &str) {
+            let caller = self.env().caller();
+            let timestamp = self.env().block_timestamp();
+            let block_number = self.env().block_number() as u64;
+            
+            self.env().emit_event(ContractDataChanged {
+                field_name: field_name.to_string(),
+                changed_by: caller,
+                old_value: old_value.to_string(),
+                new_value: new_value.to_string(),
+                block_number,
+                timestamp,
+            });
+        }
+
+
+
+        #[ink(message)]
+        pub fn get_audit_log_count(&self) -> u64 {
+            self.audit_log_count
+        }
+
+        #[ink(message)]
+        pub fn get_audit_log(&self, start: u64, limit: u64) -> Vec<AuditLogEntry> {
+            let mut entries = Vec::new();
+            let end = start.saturating_add(limit).min(self.audit_log_count);
+            
+            for i in start..end {
+                if let Some(entry) = self.audit_log.get(i) {
+                    entries.push(entry);
+                }
+            }
+            
+            entries
         }
     }
 

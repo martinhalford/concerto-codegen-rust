@@ -1,17 +1,20 @@
-# LateDeliveryAndPenalty - ink! Smart Contract
+# PropertySale - ink! Smart Contract
 
 This ink! smart contract was generated from Concerto models and implements a blockchain-based legal contract.
 
 ## Overview
 
-This contract implements the **LateDeliveryAndPenalty** template model with the following properties:
+This contract implements the **PropertySale** template model with the following properties:
 
-- **forceMajeure**: Boolean
-- **penaltyDuration**: Duration
-- **penaltyPercentage**: Double
-- **capPercentage**: Double
-- **termination**: Duration
-- **fractionalPart**: TemporalUnit
+- **sellers**: Party
+- **buyers**: Party
+- **propertyAddress**: Address
+- **purchasePrice**: Money
+- **deposit**: Money
+- **balance**: Money
+- **offer**: Offer
+- **agreementDate**: DateTime
+- **status**: ContractStatus
 
 
 ## Contract Features
@@ -19,8 +22,8 @@ This contract implements the **LateDeliveryAndPenalty** template model with the 
 - **Pausable**: Contract can be paused/unpaused by the owner
 - **Access Control**: Owner-based permissions
 - **Event Emission**: All important actions emit events
-- **Request Processing**: Handles LateDeliveryAndPenaltyRequest requests
-- **Response Generation**: Generates LateDeliveryAndPenaltyResponse responses
+- **Request Processing**: Handles ManageOfferRequest requests
+- **Response Generation**: Generates ManageOfferResponse responses
 
 ## Building and Testing
 
@@ -61,26 +64,29 @@ cargo test
 - `is_paused()`: Returns whether the contract is paused
 - `pause()`: Pause the contract (owner only)
 - `unpause()`: Unpause the contract (owner only)
-- `process_request(request: LateDeliveryAndPenaltyRequest)`: Process a contract request
-- `get_force_majeure()`: Get forceMajeure
-- `get_penalty_duration()`: Get penaltyDuration
-- `get_penalty_percentage()`: Get penaltyPercentage
-- `get_cap_percentage()`: Get capPercentage
-- `get_termination()`: Get termination
-- `get_fractional_part()`: Get fractionalPart
+- `process_request(request: ManageOfferRequest)`: Process a contract request
+- `get_sellers()`: Get sellers
+- `get_buyers()`: Get buyers
+- `get_property_address()`: Get propertyAddress
+- `get_purchase_price()`: Get purchasePrice
+- `get_deposit()`: Get deposit
+- `get_balance()`: Get balance
+- `get_offer()`: Get offer
+- `get_agreement_date()`: Get agreementDate
+- `get_status()`: Get status
 
 ### Events
 
 - `ContractCreated`: Emitted when contract is created
 - `ContractPaused`: Emitted when contract is paused
 - `ContractUnpaused`: Emitted when contract is unpaused
-- `LateDeliveryAndPenaltyRequestSubmitted`: Emitted when a request is submitted
-- `LateDeliveryAndPenaltyResponseGenerated`: Emitted when a response is generated
+- `ManageOfferRequestSubmitted`: Emitted when a request is submitted
+- `ManageOfferResponseGenerated`: Emitted when a response is generated
 
 ## Generated from Concerto Models
 
 This contract was automatically generated from the following Concerto model files:
-- io.clause.latedeliveryandpenalty@0.1.0.LateDeliveryAndPenalty
+- realestatesaleuk@1.0.0.PropertySale
 
 ## License
 

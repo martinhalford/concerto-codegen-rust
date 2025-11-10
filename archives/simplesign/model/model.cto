@@ -1,0 +1,54 @@
+namespace simplesign@1.0.0
+
+import org.accordproject.contract@0.2.0.{Contract, Clause} from https://models.accordproject.org/accordproject/contract@0.2.0.cto
+import org.accordproject.runtime@0.2.0.{Request,Response} from https://models.accordproject.org/accordproject/runtime@0.2.0.cto
+
+enum Status {
+  o Draft
+  o Signing
+  o Completed
+  o Cancelled
+}
+
+enum Country {
+  o UK
+  o USA
+  o AUSTRALIA
+  o FRANCE
+  o GERMANY
+  o ITALY
+}
+
+concept Address {
+  o String addressLine1
+  o String addressLine2
+  o String city
+  o String postCode
+  o String county
+  o Country country
+}
+
+concept Party {
+  o String partyId
+  o String fullName
+  o String email
+  o String mobile
+  o Address address
+  o String walletAddress
+  o DateTime signedAt optional
+}
+
+transaction SignContractRequest extends Request {
+}
+
+transaction SignContractResponse extends Response {
+  o Boolean success
+  o String errorMessage optional
+}
+
+@template
+asset SimpleSign extends Contract {
+  o Party[] party
+  o DateTime contractDate optional
+  o Status contractStatus
+}

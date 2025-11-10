@@ -12,8 +12,8 @@ async function main() {
   console.log("Concerto to Rust Code Generator");
   console.log("================================\n");
 
-  const archivesDir = path.join(__dirname, "..", "archives");
-  const outputDir = path.join(__dirname, "..", "output");
+  const archivesDir = path.join(__dirname, "..", "..", "archives");
+  const outputDir = path.join(__dirname, "..", "..", "output");
 
   console.log(
     "This tool generates Rust structs and enums from Concerto model files (.cto) in template archives"

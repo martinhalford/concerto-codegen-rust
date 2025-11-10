@@ -6,7 +6,11 @@
   "scripts": {
     "start": "node src/index.js",
     "generate": "node src/generate.js",
-    "generate-ink": "node src/generate-ink.js",
+    "generate-ink": "node src/generate-ink.js --template",
+    "ink": "node src/generate-ink.js --template",
+    "ink:real-estate": "node src/generate-ink.js --template realestatesaleuk",
+    "ink:late-delivery": "node src/generate-ink.js --template latedeliveryandpenalty",
+    "ink:simple-sign": "node src/generate-ink.js --template simplesign",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -23,7 +27,7 @@
     "@accordproject/concerto-util": "^3.16.0"
   },
   "devDependencies": {
-    "eslint": "^9.29.0"
+    "eslint": "9.32.0"
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
 }

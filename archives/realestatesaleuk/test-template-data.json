@@ -1,0 +1,88 @@
+{
+  "$class": "realestatesaleuk@1.0.0.PropertySale",
+  "contractId": "CONTRACT_2024_001",
+  "sellers": [
+    {
+      "$class": "realestatesaleuk@1.0.0.Party",
+      "partyId": "SELLER_001",
+      "fullName": "Transport for London",
+      "email": "property.sales@tfl.gov.uk",
+      "mobile": "+44 20 7222 1234",
+      "address": {
+        "$class": "realestatesaleuk@1.0.0.Address",
+        "addressLine1": "55 Broadway",
+        "addressLine2": "Westminster",
+        "city": "London",
+        "postCode": "SW1H 0BD",
+        "county": "Greater London",
+        "country": "UK"
+      },
+      "walletAddress": "0x1234567890abcdef1234567890abcdef12345678",
+      "signedAt": "2024-01-15T14:30:00.000Z"
+    }
+  ],
+  "buyers": [
+    {
+      "$class": "realestatesaleuk@1.0.0.Party",
+      "partyId": "BUYER_001",
+      "fullName": "Sarah Elizabeth Johnson",
+      "email": "sarah.johnson@email.com",
+      "mobile": "+44 7890 123456",
+      "address": {
+        "$class": "realestatesaleuk@1.0.0.Address",
+        "addressLine1": "42 Queen's Gate",
+        "addressLine2": "South Kensington",
+        "city": "London",
+        "postCode": "SW7 5HR",
+        "county": "Greater London",
+        "country": "UK"
+      },
+      "walletAddress": "0xabcdef1234567890abcdef1234567890abcdef12",
+      "signedAt": "2024-01-15T15:45:00.000Z"
+    },
+    {
+      "$class": "realestatesaleuk@1.0.0.Party",
+      "partyId": "BUYER_002",
+      "fullName": "Brian Felix Williams",
+      "email": "brian.williams@email.com",
+      "mobile": "+44 7438 123456",
+      "address": {
+        "$class": "realestatesaleuk@1.0.0.Address",
+        "addressLine1": "42 Queen's Gate",
+        "addressLine2": "South Kensington",
+        "city": "London",
+        "postCode": "SW7 5HR",
+        "county": "Greater London",
+        "country": "UK"
+      },
+      "walletAddress": "0xabcdef1234567890abcdef1234567890abcdef34",
+      "signedAt": "2024-01-15T15:45:00.000Z"
+    }
+  ],
+  "propertyAddress": {
+    "$class": "realestatesaleuk@1.0.0.Address",
+    "addressLine1": "Land at Bridge View",
+    "addressLine2": "Riverside Development",
+    "city": "London",
+    "postCode": "W6 9LQ",
+    "county": "Greater London",
+    "country": "UK"
+  },
+  "purchasePrice": {
+    "$class": "realestatesaleuk@1.0.0.Money",
+    "amount": 650000.0,
+    "currencyCode": "GBP"
+  },
+  "deposit": {
+    "$class": "realestatesaleuk@1.0.0.Money",
+    "amount": 65000.0,
+    "currencyCode": "GBP"
+  },
+  "balance": {
+    "$class": "realestatesaleuk@1.0.0.Money",
+    "amount": 585000.0,
+    "currencyCode": "GBP"
+  },
+  "agreementDate": "2024-01-15T10:00:00.000Z",
+  "status": "Signed"
+}
