@@ -5,23 +5,23 @@ authors = ["[your_name] <[your_email]>"]
 edition = "2021"
 
 [dependencies]
-ink = { version = "4.3", default-features = false }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
-    "derive",
-] }
-scale-info = { version = "2.6", default-features = false, features = [
-    "derive",
-] }
+ink = { version = "4.3.0", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
 
 [dev-dependencies]
-ink_e2e = { version = "4.3" }
+ink_e2e = { version = "4.3.0" }
 
 [lib]
 path = "src/lib.rs"
 
 [features]
 default = ["std"]
-std = ["ink/std", "scale/std", "scale-info/std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info/std",
+]
 ink-as-dependency = []
 e2e-tests = []
 
@@ -30,6 +30,3 @@ overflow-checks = false
 
 [profile.dev]
 overflow-checks = false
-
-[package.metadata.ink-lang]
-abi = "ink"
