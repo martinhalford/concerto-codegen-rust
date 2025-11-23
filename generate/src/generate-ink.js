@@ -1357,12 +1357,12 @@ authors = ["[your_name] <[your_email]>"]
 edition = "2021"
 
 [dependencies]
-ink = { version = "5.1.1", default-features = false }
+ink = { version = "4.3.0", default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
 
 [dev-dependencies]
-ink_e2e = { version = "5.1.1" }
+ink_e2e = { version = "4.3.0" }
 
 [lib]
 path = "src/lib.rs"
@@ -1410,6 +1410,11 @@ function createInkLibRs(
   );
 
   const libRsContent = `#![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
 
 #[ink::contract]
 mod ${contractName.toLowerCase().replace(/[^a-z0-9_]/g, "_")} {
@@ -1510,9 +1515,9 @@ function createInkReadme(projectDir, contractName, contractTypes) {
   const requestType = contractTypes.requests[0];
   const responseType = contractTypes.responses[0];
 
-  const readmeContent = `# ${contractName} - ink! Smart Contract
+  const readmeContent = `# ${contractName} - ink! v4 Smart Contract (Polymesh Compatible)
 
-This ink! smart contract was generated from Concerto models and implements a blockchain-based legal contract.
+This ink! v4 smart contract was generated from Concerto models and implements a blockchain-based legal contract compatible with Polymesh blockchain.
 
 ## Overview
 
@@ -1554,16 +1559,21 @@ ${
 ### Prerequisites
 
 1. Install Rust and Cargo
-2. Install ink! CLI:
+2. Install cargo-contract CLI compatible with ink! v4:
    \`\`\`bash
-   cargo install cargo-contract --force
+   cargo install cargo-contract --version 3.2.0 --force
    \`\`\`
 
 ### Build
 
 \`\`\`bash
-cargo contract build
+cargo contract build --release
 \`\`\`
+
+This will generate:
+- \`target/ink/[contract_name].contract\` - The contract bundle
+- \`target/ink/[contract_name].wasm\` - The compiled WebAssembly
+- \`target/ink/[contract_name].json\` - The contract metadata
 
 ### Test
 
@@ -1571,14 +1581,16 @@ cargo contract build
 cargo test
 \`\`\`
 
-### Deploy
+### Deploy to Polymesh
 
-1. Start a local Substrate node with contracts pallet
-2. Deploy the contract:
+1. Ensure you have access to a Polymesh testnet or mainnet node
+2. Deploy the contract using the Polymesh portal or CLI:
    \`\`\`bash
-   cargo contract upload --suri //Alice
-   cargo contract instantiate --suri //Alice --constructor new
+   cargo contract upload --suri //YourKey --url wss://your-polymesh-node:443
+   cargo contract instantiate --suri //YourKey --constructor new --url wss://your-polymesh-node:443
    \`\`\`
+
+Note: This contract is built with ink! v4 for Polymesh compatibility.
 
 ## Contract API
 
@@ -1700,7 +1712,9 @@ function getPackageNameFromJson(archivesDir, templateName) {
  */
 async function generateInkContract(archivesDir, outputDir, templateName) {
   try {
-    console.log("🦑 Starting ink! smart contract generation...\n");
+    console.log(
+      "🦑 Starting ink! v4 smart contract generation (Polymesh compatible)...\n"
+    );
     console.log(`📁 Archives directory: ${archivesDir}`);
     console.log(`📤 Output directory: ${outputDir}/${templateName}`);
     console.log("\n");
@@ -1864,13 +1878,18 @@ async function generateInkContract(archivesDir, outputDir, templateName) {
     createInkLibRs(srcDir, contractTypes, contractName);
     createInkReadme(templateOutputDir, contractName, contractTypes);
 
-    console.log("✅ ink! smart contract generation completed successfully!\n");
+    console.log(
+      "✅ ink! v4 smart contract generation completed successfully!\n"
+    );
     console.log(`📁 Generated contract in: ${templateOutputDir}`);
     console.log("\n🚀 Next steps:");
     console.log("1. cd " + templateOutputDir);
-    console.log("2. cargo contract build");
+    console.log("2. cargo contract build --release");
     console.log("3. cargo test");
-    console.log("4. Deploy to a Substrate blockchain with contracts pallet\n");
+    console.log("4. Deploy to Polymesh blockchain\n");
+    console.log(
+      "Note: This contract uses ink! v4 for Polymesh compatibility.\n"
+    );
   } catch (error) {
     console.error("❌ Error during ink! contract generation:", error);
     process.exit(1);
