@@ -1,6 +1,6 @@
-# LateDeliveryAndPenalty - ink! Smart Contract
+# LateDeliveryAndPenalty - ink! v4 Smart Contract (Polymesh Compatible)
 
-This ink! smart contract was generated from Concerto models and implements a blockchain-based legal contract.
+This ink! v4 smart contract was generated from Concerto models and implements a blockchain-based legal contract compatible with Polymesh blockchain.
 
 ## Overview
 
@@ -27,16 +27,21 @@ This contract implements the **LateDeliveryAndPenalty** template model with the 
 ### Prerequisites
 
 1. Install Rust and Cargo
-2. Install ink! CLI:
+2. Install cargo-contract CLI compatible with ink! v4:
    ```bash
-   cargo install cargo-contract --force
+   cargo install cargo-contract --version 3.2.0 --force
    ```
 
 ### Build
 
 ```bash
-cargo contract build
+cargo contract build --release
 ```
+
+This will generate:
+- `target/ink/[contract_name].contract` - The contract bundle
+- `target/ink/[contract_name].wasm` - The compiled WebAssembly
+- `target/ink/[contract_name].json` - The contract metadata
 
 ### Test
 
@@ -44,14 +49,16 @@ cargo contract build
 cargo test
 ```
 
-### Deploy
+### Deploy to Polymesh
 
-1. Start a local Substrate node with contracts pallet
-2. Deploy the contract:
+1. Ensure you have access to a Polymesh testnet or mainnet node
+2. Deploy the contract using the Polymesh portal or CLI:
    ```bash
-   cargo contract upload --suri //Alice
-   cargo contract instantiate --suri //Alice --constructor new
+   cargo contract upload --suri //YourKey --url wss://your-polymesh-node:443
+   cargo contract instantiate --suri //YourKey --constructor new --url wss://your-polymesh-node:443
    ```
+
+Note: This contract is built with ink! v4 for Polymesh compatibility.
 
 ## Contract API
 

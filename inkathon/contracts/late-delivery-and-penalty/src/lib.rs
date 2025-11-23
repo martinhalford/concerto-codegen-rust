@@ -1,9 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
 
 #[ink::contract]
 mod latedeliveryandpenalty {
     use ink::prelude::string::{String, ToString};
     use ink::prelude::vec::Vec;
+    use ink::prelude::format;
 
     // Error types
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -16,6 +22,33 @@ mod latedeliveryandpenalty {
     }
 
     pub type Result<T> = core::result::Result<T, ContractError>;
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct TransactionRecord {
+        pub field_name: String,
+        pub old_value: String,
+        pub new_value: String,
+        pub changed_by: AccountId,
+        pub timestamp: u64,
+        pub block_number: u64,
+    }
+
+    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct ActivitySummary {
+        pub total_transactions: u32,
+        pub latest_field_name: String,
+        pub latest_changed_by: AccountId,
+        pub latest_block_number: u64,
+        pub has_transactions: bool,
+    }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
     #[cfg_attr(
@@ -133,25 +166,11 @@ mod latedeliveryandpenalty {
         Years,
     }
 
-
-    #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub struct AuditLogEntry {
-        pub caller: AccountId,
-        pub timestamp: u64,
-        pub function_name: String,
-        pub request_id: u64,
-    }
-
     #[ink(storage)]
     pub struct LateDeliveryAndPenalty {
         owner: AccountId,
         paused: bool,
-        audit_log: ink::storage::Mapping<u64, AuditLogEntry>,
-        audit_log_count: u64,
+        transaction_history: Vec<TransactionRecord>,
         force_majeure: bool,
         penalty_duration: u64,
         penalty_percentage: u128,
@@ -179,6 +198,18 @@ mod latedeliveryandpenalty {
     }
 
     #[ink(event)]
+    pub struct ContractDataChanged {
+        #[ink(topic)]
+        pub field_name: String,
+        #[ink(topic)]
+        pub changed_by: AccountId,
+        pub old_value: String,
+        pub new_value: String,
+        pub block_number: u64,
+        pub timestamp: u64,
+    }
+
+    #[ink(event)]
     pub struct LateDeliveryAndPenaltyRequestSubmitted {
         #[ink(topic)]
         pub submitter: AccountId,
@@ -191,29 +222,6 @@ mod latedeliveryandpenalty {
         #[ink(topic)]
         pub request_id: u64,
         pub success: bool,
-    }
-
-
-    #[ink(event)]
-    pub struct FunctionCalled {
-        #[ink(topic)]
-        pub caller: AccountId,
-        #[ink(topic)]
-        pub function_name: String,
-        pub request_id: u64,
-        pub timestamp: u64,
-    }
-
-    #[ink(event)]
-    pub struct ContractDataChanged {
-        #[ink(topic)]
-        pub field_name: String,
-        #[ink(topic)]
-        pub changed_by: AccountId,
-        pub old_value: String,
-        pub new_value: String,
-        pub block_number: u64,
-        pub timestamp: u64,
     }
 
     impl LateDeliveryAndPenalty {
@@ -233,8 +241,7 @@ mod latedeliveryandpenalty {
             Self {
                 owner: caller,
                 paused: false,
-                audit_log: ink::storage::Mapping::default(),
-                audit_log_count: 0,
+                transaction_history: Vec::new(),
                 force_majeure,
                 penalty_duration,
                 penalty_percentage,
@@ -274,6 +281,7 @@ mod latedeliveryandpenalty {
             }
             
             self.paused = true;
+            self.log_method_call("pause", "contract paused");
             self.env().emit_event(ContractPaused { by: caller });
             Ok(())
         }
@@ -286,6 +294,7 @@ mod latedeliveryandpenalty {
             }
             
             self.paused = false;
+            self.log_method_call("unpause", "contract unpaused");
             self.env().emit_event(ContractUnpaused { by: caller });
             Ok(())
         }
@@ -314,8 +323,7 @@ mod latedeliveryandpenalty {
             };
             // === END CUSTOM LOGIC ===
             
-            // Log function call for audit trail
-            self.log_function_call("late_delivery_and_penalty", request_id);
+            self.log_method_call("late_delivery_and_penalty", "late delivery and penalty executed");
             
             self.env().emit_event(LateDeliveryAndPenaltyResponseGenerated {
                 request_id,
@@ -489,38 +497,28 @@ mod latedeliveryandpenalty {
 
 
 
-        // === AUDIT LOG FUNCTIONALITY ===
+        // === FIELD CHANGE LOGGING ===
         
-        /// Record a function call in the audit log
-        fn log_function_call(&mut self, function_name: &str, request_id: u64) {
-            let caller = self.env().caller();
-            let timestamp = self.env().block_timestamp();
-            
-            let log_entry = AuditLogEntry {
-                caller,
-                timestamp,
-                function_name: function_name.to_string(),
-                request_id,
-            };
-            
-            // Store with current count as index, then increment
-            self.audit_log.insert(self.audit_log_count, &log_entry);
-            self.audit_log_count = self.audit_log_count.saturating_add(1);
-            
-            self.env().emit_event(FunctionCalled {
-                caller,
-                function_name: function_name.to_string(),
-                request_id,
-                timestamp,
-            });
-        }
-
         /// Record a field change with before/after values
         fn log_field_change(&mut self, field_name: &str, old_value: &str, new_value: &str) {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
             let block_number = self.env().block_number() as u64;
             
+            // Store in complete transaction history
+            let transaction_record = TransactionRecord {
+                field_name: field_name.to_string(),
+                old_value: old_value.to_string(),
+                new_value: new_value.to_string(),
+                changed_by: caller,
+                timestamp,
+                block_number,
+            };
+            
+            // Add to complete transaction history (no limit)
+            self.transaction_history.push(transaction_record);
+            
+            // Emit event for external monitoring
             self.env().emit_event(ContractDataChanged {
                 field_name: field_name.to_string(),
                 changed_by: caller,
@@ -531,25 +529,77 @@ mod latedeliveryandpenalty {
             });
         }
 
-
-
-        #[ink(message)]
-        pub fn get_audit_log_count(&self) -> u64 {
-            self.audit_log_count
+        /// Record a method call in transaction history
+        fn log_method_call(&mut self, method_name: &str, description: &str) {
+            let caller = self.env().caller();
+            let timestamp = self.env().block_timestamp();
+            let block_number = self.env().block_number() as u64;
+            
+            // Store method call in transaction history
+            let transaction_record = TransactionRecord {
+                field_name: method_name.to_string(),
+                old_value: "method_call".to_string(),
+                new_value: description.to_string(),
+                changed_by: caller,
+                timestamp,
+                block_number,
+            };
+            
+            // Add to complete transaction history (no limit)
+            self.transaction_history.push(transaction_record);
         }
 
+        // === TRANSACTION HISTORY QUERY METHODS ===
+
         #[ink(message)]
-        pub fn get_audit_log(&self, start: u64, limit: u64) -> Vec<AuditLogEntry> {
-            let mut entries = Vec::new();
-            let end = start.saturating_add(limit).min(self.audit_log_count);
+        pub fn get_transaction_history(&self, limit: Option<u32>) -> Vec<TransactionRecord> {
+            let mut history = self.transaction_history.clone();
             
-            for i in start..end {
-                if let Some(entry) = self.audit_log.get(i) {
-                    entries.push(entry);
+            // Reverse to get most recent first
+            history.reverse();
+            
+            // Apply limit if specified
+            if let Some(max_count) = limit {
+                #[allow(clippy::cast_possible_truncation)]
+                let max_count_usize = max_count as usize;
+                if history.len() > max_count_usize {
+                    history.truncate(max_count_usize);
                 }
             }
             
-            entries
+            history
+        }
+
+        #[ink(message)]
+        pub fn get_transaction_count(&self) -> u32 {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                self.transaction_history.len() as u32
+            }
+        }
+
+        #[ink(message)]
+        pub fn get_contract_activity_summary(&self) -> ActivitySummary {
+            if self.transaction_history.is_empty() {
+                return ActivitySummary {
+                    total_transactions: 0,
+                    latest_field_name: "none".to_string(),
+                    latest_changed_by: self.owner,
+                    latest_block_number: 0,
+                    has_transactions: false,
+                };
+            }
+            
+            // Get the most recent transaction (last in the vector)
+            let latest_transaction = &self.transaction_history[self.transaction_history.len().saturating_sub(1)];
+            ActivitySummary {
+                #[allow(clippy::cast_possible_truncation)]
+                total_transactions: self.transaction_history.len() as u32,
+                latest_field_name: latest_transaction.field_name.clone(),
+                latest_changed_by: latest_transaction.changed_by,
+                latest_block_number: latest_transaction.block_number,
+                has_transactions: true,
+            }
         }
     }
 
