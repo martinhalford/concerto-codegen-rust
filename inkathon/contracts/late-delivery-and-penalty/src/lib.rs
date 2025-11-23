@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![allow(clippy::cast_possible_truncation)]
 
 #[ink::contract]
 mod latedeliveryandpenalty {
@@ -18,10 +19,7 @@ mod latedeliveryandpenalty {
     pub type Result<T> = core::result::Result<T, ContractError>;
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub struct LateDeliveryAndPenaltyRequest {
         pub force_majeure: bool,
         pub agreed_delivery: u64,
@@ -30,49 +28,34 @@ mod latedeliveryandpenalty {
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub struct LateDeliveryAndPenaltyResponse {
         pub penalty: u128,
         pub buyer_may_terminate: bool,
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub struct DotNetNamespace {
         pub namespace: String,
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub struct Duration {
         pub amount: u128,
         pub unit: String,
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub struct Period {
         pub amount: u128,
         pub unit: u64,
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum Month {
         #[default]
         January,
@@ -90,10 +73,7 @@ mod latedeliveryandpenalty {
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum Day {
         #[default]
         Monday,
@@ -106,10 +86,7 @@ mod latedeliveryandpenalty {
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum TemporalUnit {
         #[default]
         Seconds,
@@ -120,10 +97,7 @@ mod latedeliveryandpenalty {
     }
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum PeriodUnit {
         #[default]
         Days,
@@ -132,7 +106,6 @@ mod latedeliveryandpenalty {
         Quarters,
         Years,
     }
-
 
     #[derive(scale::Decode, scale::Encode, Clone, PartialEq, Eq, Debug)]
     #[cfg_attr(
@@ -193,7 +166,6 @@ mod latedeliveryandpenalty {
         pub success: bool,
     }
 
-
     #[ink(event)]
     pub struct FunctionCalled {
         #[ink(topic)]
@@ -227,7 +199,7 @@ mod latedeliveryandpenalty {
             fractional_part: String,
         ) -> Self {
             let caller = Self::env().caller();
-            
+
             Self::env().emit_event(ContractCreated { owner: caller });
 
             Self {
@@ -246,14 +218,7 @@ mod latedeliveryandpenalty {
 
         #[ink(constructor)]
         pub fn default() -> Self {
-            Self::new(
-                false,
-                0,
-                0,
-                0,
-                0,
-                String::new(),
-            )
+            Self::new(false, 0, 0, 0, 0, String::new())
         }
 
         #[ink(message)]
@@ -272,7 +237,7 @@ mod latedeliveryandpenalty {
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             self.paused = true;
             self.env().emit_event(ContractPaused { by: caller });
             Ok(())
@@ -284,7 +249,7 @@ mod latedeliveryandpenalty {
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             self.paused = false;
             self.env().emit_event(ContractUnpaused { by: caller });
             Ok(())
@@ -300,11 +265,12 @@ mod latedeliveryandpenalty {
             }
 
             let request_id = self.env().block_number() as u64;
-            
-            self.env().emit_event(LateDeliveryAndPenaltyRequestSubmitted {
-                submitter: self.env().caller(),
-                request_id,
-            });
+
+            self.env()
+                .emit_event(LateDeliveryAndPenaltyRequestSubmitted {
+                    submitter: self.env().caller(),
+                    request_id,
+                });
 
             // === BEGIN CUSTOM LOGIC ===
             // TODO: Implement your late delivery and penalty logic here
@@ -313,14 +279,15 @@ mod latedeliveryandpenalty {
                 buyer_may_terminate: false,
             };
             // === END CUSTOM LOGIC ===
-            
+
             // Log function call for audit trail
             self.log_function_call("late_delivery_and_penalty", request_id);
-            
-            self.env().emit_event(LateDeliveryAndPenaltyResponseGenerated {
-                request_id,
-                success: true,
-            });
+
+            self.env()
+                .emit_event(LateDeliveryAndPenaltyResponseGenerated {
+                    request_id,
+                    success: true,
+                });
 
             Ok(response)
         }
@@ -360,12 +327,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.force_majeure != new_value {
                 let old_value = self.force_majeure.to_string();
                 let new_value_str = new_value.to_string();
@@ -382,12 +349,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.penalty_duration != new_value {
                 let old_str = self.penalty_duration.to_string();
                 let new_str = new_value.to_string();
@@ -404,12 +371,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.penalty_percentage != new_value {
                 let old_str = self.penalty_percentage.to_string();
                 let new_str = new_value.to_string();
@@ -426,12 +393,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.cap_percentage != new_value {
                 let old_str = self.cap_percentage.to_string();
                 let new_str = new_value.to_string();
@@ -448,12 +415,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.termination != new_value {
                 let old_str = self.termination.to_string();
                 let new_str = new_value.to_string();
@@ -470,12 +437,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.fractional_part != new_value {
                 let old_value = self.fractional_part.clone();
                 self.log_field_change("fractional_part", &old_value, &new_value);
@@ -486,27 +453,24 @@ mod latedeliveryandpenalty {
             Ok(())
         }
 
-
-
-
         // === AUDIT LOG FUNCTIONALITY ===
-        
+
         /// Record a function call in the audit log
         fn log_function_call(&mut self, function_name: &str, request_id: u64) {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
-            
+
             let log_entry = AuditLogEntry {
                 caller,
                 timestamp,
                 function_name: function_name.to_string(),
                 request_id,
             };
-            
+
             // Store with current count as index, then increment
             self.audit_log.insert(self.audit_log_count, &log_entry);
             self.audit_log_count = self.audit_log_count.saturating_add(1);
-            
+
             self.env().emit_event(FunctionCalled {
                 caller,
                 function_name: function_name.to_string(),
@@ -520,7 +484,7 @@ mod latedeliveryandpenalty {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
             let block_number = self.env().block_number() as u64;
-            
+
             self.env().emit_event(ContractDataChanged {
                 field_name: field_name.to_string(),
                 changed_by: caller,
@@ -531,8 +495,6 @@ mod latedeliveryandpenalty {
             });
         }
 
-
-
         #[ink(message)]
         pub fn get_audit_log_count(&self) -> u64 {
             self.audit_log_count
@@ -542,13 +504,13 @@ mod latedeliveryandpenalty {
         pub fn get_audit_log(&self, start: u64, limit: u64) -> Vec<AuditLogEntry> {
             let mut entries = Vec::new();
             let end = start.saturating_add(limit).min(self.audit_log_count);
-            
+
             for i in start..end {
                 if let Some(entry) = self.audit_log.get(i) {
                     entries.push(entry);
                 }
             }
-            
+
             entries
         }
     }
