@@ -14,3 +14,18 @@ export const siccarDevelopment: SubstrateChain = {
   testnet: true,
   faucetUrls: []
 }
+
+/**
+ * Polymesh Testnet Chain Configuration
+ */
+export const polymeshTestnet: SubstrateChain = {
+  network: 'polymesh-testnet',
+  name: 'Polymesh Testnet',
+  ss58Prefix: 12,
+  rpcUrls: ['wss://testnet-rpc.polymesh.live/'],
+  explorerUrls: {
+    polkadotjs: `https://polkadot.js.org/apps/?rpc=${encodeURIComponent('wss://testnet-rpc.polymesh.live/')}/#/explorer`
+  },
+  testnet: true,
+  faucetUrls: []
+}
