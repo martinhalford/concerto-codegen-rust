@@ -103,6 +103,30 @@ const safeRenderValue = (value: any, fallback: string = 'N/A') => {
   return String(value);
 };
 
+// Helper function to convert seconds to readable duration
+const formatDuration = (seconds: any): string => {
+  // Remove commas from string values (e.g., "86,400" -> "86400")
+  const cleanValue = String(seconds).replace(/,/g, '');
+  const sec = parseInt(cleanValue);
+
+  if (isNaN(sec) || sec === 0) {
+    return 'N/A';
+  }
+
+  const days = Math.floor(sec / 86400);
+  const hours = Math.floor((sec % 86400) / 3600);
+  const minutes = Math.floor((sec % 3600) / 60);
+  const remainingSeconds = sec % 60;
+
+  const parts = [];
+  if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+  if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+  if (minutes > 0 && days === 0) parts.push(`${minutes} min${minutes !== 1 ? 's' : ''}`);
+  if (remainingSeconds > 0 && days === 0 && hours === 0) parts.push(`${remainingSeconds} sec`);
+
+  return parts.length > 0 ? parts.join(', ') : `${sec} seconds`;
+};
+
 export const LateDeliveryContractInteractions: FC = () => {
   const { api, activeAccount, activeSigner } = useInkathon()
   const { contract, address: contractAddress } = useRegisteredContract(ContractIds.LateDeliveryAndPenalty)
@@ -177,7 +201,13 @@ export const LateDeliveryContractInteractions: FC = () => {
         contractQuery(api, '', contract, 'get_fractional_part'),
       ])
 
-      setContractInfo({
+      // Debug: Log raw query results
+      console.log('Raw query results:', {
+        penaltyDuration: decodeOutput(penaltyDuration, contract, 'get_penalty_duration'),
+        termination: decodeOutput(termination, contract, 'get_termination'),
+      })
+
+      const contractData = {
         owner: safeExtractValue(decodeOutput(owner, contract, 'get_owner').output, 'Unknown'),
         isPaused: safeExtractValue(decodeOutput(isPaused, contract, 'is_paused').output, false),
         forceMajeure: safeExtractValue(decodeOutput(forceMajeure, contract, 'get_force_majeure').output, false),
@@ -186,7 +216,12 @@ export const LateDeliveryContractInteractions: FC = () => {
         capPercentage: safeExtractValue(decodeOutput(capPercentage, contract, 'get_cap_percentage').output, 'N/A'),
         termination: safeExtractValue(decodeOutput(termination, contract, 'get_termination').output, 'N/A'),
         fractionalPart: safeExtractValue(decodeOutput(fractionalPart, contract, 'get_fractional_part').output, 'N/A'),
-      })
+      }
+
+      console.log('📊 Contract Info Retrieved:', contractData)
+      console.log('Penalty Duration raw value:', contractData.penaltyDuration, 'Type:', typeof contractData.penaltyDuration)
+      console.log('Termination raw value:', contractData.termination, 'Type:', typeof contractData.termination)
+      setContractInfo(contractData)
     } catch (e) {
       console.error('Error fetching contract info:', e)
       toast.error('Error fetching contract information')
@@ -303,15 +338,15 @@ export const LateDeliveryContractInteractions: FC = () => {
     try {
       console.log('🚀 Starting process request...')
 
-      // Convert datetime strings to Unix timestamps (seconds)
-      const agreedDeliveryTimestamp = Math.floor(new Date(agreedDelivery).getTime() / 1000)
-      const deliveredAtTimestamp = deliveredAt ? Math.floor(new Date(deliveredAt).getTime() / 1000) : null
+      // Convert datetime strings to Unix timestamps (milliseconds for ink!)
+      const agreedDeliveryTimestamp = new Date(agreedDelivery).getTime()
+      const deliveredAtTimestamp = deliveredAt ? new Date(deliveredAt).getTime() : null
 
       const request = {
         force_majeure: forceMajeure,
         agreed_delivery: agreedDeliveryTimestamp,
-        delivered_at: deliveredAtTimestamp ? { Some: deliveredAtTimestamp } : { None: null },
-        goods_value: goodsValue,
+        delivered_at: deliveredAtTimestamp,
+        goods_value: parseInt(goodsValue),
       }
 
       console.log('📝 Request parameters:', {
@@ -325,16 +360,27 @@ export const LateDeliveryContractInteractions: FC = () => {
       })
 
       console.log('📤 Submitting transaction to blockchain...')
+      console.log('📋 Request object being sent:', JSON.stringify(request, null, 2))
       const txStartTime = Date.now()
 
       // Execute the actual transaction first
       let txResult
       try {
-        txResult = await contractTx(api, activeAccount.address, contract, 'process_request', {}, [request])
+        console.log('Calling contractTx with method: late_delivery_and_penalty')
+        console.log('Request structure:', {
+          force_majeure: typeof request.force_majeure,
+          agreed_delivery: typeof request.agreed_delivery,
+          delivered_at: typeof request.delivered_at,
+          goods_value: typeof request.goods_value,
+        })
+
+        txResult = await contractTx(api, activeAccount.address, contract, 'late_delivery_and_penalty', {}, [request])
+        console.log('✅ Transaction submitted! TX Result:', txResult)
+
         // Show success toast manually
         toast.success('Transaction submitted successfully!')
       } catch (txError) {
-        console.error('Transaction submission failed:', txError)
+        console.error('❌ Transaction submission failed:', txError)
         toast.error(`Transaction failed: ${txError instanceof Error ? txError.message : 'Unknown error'}`)
         throw txError
       }
@@ -383,7 +429,7 @@ export const LateDeliveryContractInteractions: FC = () => {
 
         try {
           // Query the contract to get the actual result after transaction
-          const queryResult = await contractQuery(api, activeAccount.address, contract, 'process_request', {}, [request])
+          const queryResult = await contractQuery(api, activeAccount.address, contract, 'late_delivery_and_penalty', {}, [request])
           const queryEndTime = Date.now()
           const queryDuration = queryEndTime - queryStartTime
 
@@ -394,7 +440,7 @@ export const LateDeliveryContractInteractions: FC = () => {
             gasRequired: queryResult?.gasRequired?.toString()
           })
 
-          const { output, isError, decodedOutput } = decodeOutput(queryResult, contract, 'process_request')
+          const { output, isError, decodedOutput } = decodeOutput(queryResult, contract, 'late_delivery_and_penalty')
 
           console.log('🧮 Decoded query result:', {
             output,
@@ -511,6 +557,9 @@ export const LateDeliveryContractInteractions: FC = () => {
       setTransactionHistory(prev => [...prev, historyEntry])
 
       processRequestForm.reset()
+
+      // Refresh contract info to show any state changes
+      fetchContractInfo()
 
       console.log('🎉 Final status summary:', {
         transactionSucceeded,
@@ -631,23 +680,25 @@ export const LateDeliveryContractInteractions: FC = () => {
               </div>
               <div className="flex justify-between">
                 <span>Force Majeure:</span>
-                <span>{isLoadingInfo ? 'Loading...' : contractInfo.forceMajeure ? 'Yes' : 'No'}</span>
+                <span className={contractInfo.forceMajeure ? 'text-orange-500' : 'text-gray-400'}>
+                  {isLoadingInfo ? 'Loading...' : contractInfo.forceMajeure ? 'Yes' : 'No'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Penalty Duration:</span>
-                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.penaltyDuration)}</span>
+                <span>{isLoadingInfo ? 'Loading...' : formatDuration(contractInfo.penaltyDuration)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Penalty %:</span>
-                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.penaltyPercentage)}</span>
+                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.penaltyPercentage)}%</span>
               </div>
               <div className="flex justify-between">
                 <span>Cap %:</span>
-                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.capPercentage)}</span>
+                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.capPercentage)}%</span>
               </div>
               <div className="flex justify-between">
-                <span>Termination:</span>
-                <span>{isLoadingInfo ? 'Loading...' : safeRenderValue(contractInfo.termination)}</span>
+                <span>Termination Period:</span>
+                <span>{isLoadingInfo ? 'Loading...' : formatDuration(contractInfo.termination)}</span>
               </div>
             </CardContent>
           </Card>

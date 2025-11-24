@@ -7,9 +7,9 @@
 
 #[ink::contract]
 mod latedeliveryandpenalty {
+    use ink::prelude::format;
     use ink::prelude::string::{String, ToString};
     use ink::prelude::vec::Vec;
-    use ink::prelude::format;
 
     // Error types
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -235,7 +235,7 @@ mod latedeliveryandpenalty {
             fractional_part: String,
         ) -> Self {
             let caller = Self::env().caller();
-            
+
             Self::env().emit_event(ContractCreated { owner: caller });
 
             Self {
@@ -253,14 +253,7 @@ mod latedeliveryandpenalty {
 
         #[ink(constructor)]
         pub fn default() -> Self {
-            Self::new(
-                false,
-                0,
-                0,
-                0,
-                0,
-                String::new(),
-            )
+            Self::new(false, 0, 0, 0, 0, String::new())
         }
 
         #[ink(message)]
@@ -279,7 +272,7 @@ mod latedeliveryandpenalty {
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             self.paused = true;
             self.log_method_call("pause", "contract paused");
             self.env().emit_event(ContractPaused { by: caller });
@@ -292,7 +285,7 @@ mod latedeliveryandpenalty {
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             self.paused = false;
             self.log_method_call("unpause", "contract unpaused");
             self.env().emit_event(ContractUnpaused { by: caller });
@@ -302,33 +295,124 @@ mod latedeliveryandpenalty {
         #[ink(message)]
         pub fn late_delivery_and_penalty(
             &mut self,
-            _request: LateDeliveryAndPenaltyRequest,
+            request: LateDeliveryAndPenaltyRequest,
         ) -> Result<LateDeliveryAndPenaltyResponse> {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
 
+            // Only owner can update contract state via request
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(ContractError::Unauthorized);
+            }
+
             let request_id = self.env().block_number() as u64;
-            
-            self.env().emit_event(LateDeliveryAndPenaltyRequestSubmitted {
-                submitter: self.env().caller(),
-                request_id,
-            });
+
+            self.env()
+                .emit_event(LateDeliveryAndPenaltyRequestSubmitted {
+                    submitter: self.env().caller(),
+                    request_id,
+                });
 
             // === BEGIN CUSTOM LOGIC ===
-            // TODO: Implement your late delivery and penalty logic here
-            let response = LateDeliveryAndPenaltyResponse {
-                penalty: 0,
-                buyer_may_terminate: false,
+
+            // UPDATE CONTRACT STATE from request
+            // The request updates the contract's force majeure state
+            if self.force_majeure != request.force_majeure {
+                let old_value = self.force_majeure.to_string();
+                let new_value = request.force_majeure.to_string();
+                self.log_field_change("force_majeure", &old_value, &new_value);
+                self.force_majeure = request.force_majeure;
+            }
+
+            // If force majeure is now true, no penalty applies
+            if self.force_majeure {
+                let response = LateDeliveryAndPenaltyResponse {
+                    penalty: 0,
+                    buyer_may_terminate: false,
+                };
+
+                self.log_method_call("late_delivery_and_penalty", "force majeure - no penalty");
+
+                self.env()
+                    .emit_event(LateDeliveryAndPenaltyResponseGenerated {
+                        request_id,
+                        success: true,
+                    });
+
+                return Ok(response);
+            }
+
+            // Get the delivery timestamp (or current time if not delivered)
+            let delivered_at = match request.delivered_at {
+                Some(timestamp) => timestamp,
+                None => self.env().block_timestamp(),
             };
+
+            // Calculate if delivery is late
+            if delivered_at <= request.agreed_delivery {
+                // Delivered on time or early - no penalty
+                let response = LateDeliveryAndPenaltyResponse {
+                    penalty: 0,
+                    buyer_may_terminate: false,
+                };
+
+                self.log_method_call("late_delivery_and_penalty", "on-time delivery - no penalty");
+
+                self.env()
+                    .emit_event(LateDeliveryAndPenaltyResponseGenerated {
+                        request_id,
+                        success: true,
+                    });
+
+                return Ok(response);
+            }
+
+            // Calculate how late the delivery was (in seconds)
+            let delay_seconds = delivered_at.saturating_sub(request.agreed_delivery);
+
+            // Calculate penalty
+            // Formula: (delay_seconds / penalty_duration) * (penalty_percentage / 100) * goods_value
+            let penalty_duration_seconds = self.penalty_duration;
+
+            if penalty_duration_seconds == 0 {
+                return Err(ContractError::InvalidInput);
+            }
+
+            // Calculate the penalty ratio: delay_seconds / penalty_duration
+            // Multiply by penalty_percentage, then divide by 100 to get percentage
+            // Apply to goods_value
+            let delay_periods = (delay_seconds as u128) / (penalty_duration_seconds as u128);
+            let penalty_before_cap =
+                (delay_periods * self.penalty_percentage * request.goods_value) / 100;
+
+            // Apply cap: penalty cannot exceed cap_percentage of goods_value
+            let max_penalty = (self.cap_percentage * request.goods_value) / 100;
+            let penalty = if penalty_before_cap > max_penalty {
+                max_penalty
+            } else {
+                penalty_before_cap
+            };
+
+            // Determine if buyer may terminate
+            // Buyer can terminate if delay exceeds the termination threshold
+            let buyer_may_terminate = delay_seconds >= self.termination;
+
+            let response = LateDeliveryAndPenaltyResponse {
+                penalty,
+                buyer_may_terminate,
+            };
+
             // === END CUSTOM LOGIC ===
-            
-            self.log_method_call("late_delivery_and_penalty", "late delivery and penalty executed");
-            
-            self.env().emit_event(LateDeliveryAndPenaltyResponseGenerated {
-                request_id,
-                success: true,
-            });
+
+            self.log_method_call("late_delivery_and_penalty", "penalty calculated");
+
+            self.env()
+                .emit_event(LateDeliveryAndPenaltyResponseGenerated {
+                    request_id,
+                    success: true,
+                });
 
             Ok(response)
         }
@@ -368,12 +452,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.force_majeure != new_value {
                 let old_value = self.force_majeure.to_string();
                 let new_value_str = new_value.to_string();
@@ -390,12 +474,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.penalty_duration != new_value {
                 let old_str = self.penalty_duration.to_string();
                 let new_str = new_value.to_string();
@@ -412,12 +496,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.penalty_percentage != new_value {
                 let old_str = self.penalty_percentage.to_string();
                 let new_str = new_value.to_string();
@@ -434,12 +518,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.cap_percentage != new_value {
                 let old_str = self.cap_percentage.to_string();
                 let new_str = new_value.to_string();
@@ -456,12 +540,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.termination != new_value {
                 let old_str = self.termination.to_string();
                 let new_str = new_value.to_string();
@@ -478,12 +562,12 @@ mod latedeliveryandpenalty {
             if self.paused {
                 return Err(ContractError::ContractPaused);
             }
-            
+
             let caller = self.env().caller();
             if caller != self.owner {
                 return Err(ContractError::Unauthorized);
             }
-            
+
             if self.fractional_part != new_value {
                 let old_value = self.fractional_part.clone();
                 self.log_field_change("fractional_part", &old_value, &new_value);
@@ -494,17 +578,14 @@ mod latedeliveryandpenalty {
             Ok(())
         }
 
-
-
-
         // === FIELD CHANGE LOGGING ===
-        
+
         /// Record a field change with before/after values
         fn log_field_change(&mut self, field_name: &str, old_value: &str, new_value: &str) {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
             let block_number = self.env().block_number() as u64;
-            
+
             // Store in complete transaction history
             let transaction_record = TransactionRecord {
                 field_name: field_name.to_string(),
@@ -514,10 +595,10 @@ mod latedeliveryandpenalty {
                 timestamp,
                 block_number,
             };
-            
+
             // Add to complete transaction history (no limit)
             self.transaction_history.push(transaction_record);
-            
+
             // Emit event for external monitoring
             self.env().emit_event(ContractDataChanged {
                 field_name: field_name.to_string(),
@@ -534,7 +615,7 @@ mod latedeliveryandpenalty {
             let caller = self.env().caller();
             let timestamp = self.env().block_timestamp();
             let block_number = self.env().block_number() as u64;
-            
+
             // Store method call in transaction history
             let transaction_record = TransactionRecord {
                 field_name: method_name.to_string(),
@@ -544,7 +625,7 @@ mod latedeliveryandpenalty {
                 timestamp,
                 block_number,
             };
-            
+
             // Add to complete transaction history (no limit)
             self.transaction_history.push(transaction_record);
         }
@@ -554,10 +635,10 @@ mod latedeliveryandpenalty {
         #[ink(message)]
         pub fn get_transaction_history(&self, limit: Option<u32>) -> Vec<TransactionRecord> {
             let mut history = self.transaction_history.clone();
-            
+
             // Reverse to get most recent first
             history.reverse();
-            
+
             // Apply limit if specified
             if let Some(max_count) = limit {
                 #[allow(clippy::cast_possible_truncation)]
@@ -566,7 +647,7 @@ mod latedeliveryandpenalty {
                     history.truncate(max_count_usize);
                 }
             }
-            
+
             history
         }
 
@@ -589,9 +670,10 @@ mod latedeliveryandpenalty {
                     has_transactions: false,
                 };
             }
-            
+
             // Get the most recent transaction (last in the vector)
-            let latest_transaction = &self.transaction_history[self.transaction_history.len().saturating_sub(1)];
+            let latest_transaction =
+                &self.transaction_history[self.transaction_history.len().saturating_sub(1)];
             ActivitySummary {
                 #[allow(clippy::cast_possible_truncation)]
                 total_transactions: self.transaction_history.len() as u32,

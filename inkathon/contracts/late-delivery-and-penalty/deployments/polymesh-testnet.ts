@@ -1,5 +1,5 @@
 // Polymesh Testnet deployment configuration
-export const address = "5DyUJX7KM7AAgJo99cjNc9LbT9i3kpKwbyPkPRxSfJAoxrTS"
+export const address = "5GTuy35AZo1zWXxAwVDzGDMBixVNSDFK7BkVDgdyDRbNzuAD"
 
 // Deployment metadata
 export const deploymentInfo = {
